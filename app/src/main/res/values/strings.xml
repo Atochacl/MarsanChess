@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Marsan Chess</string>
+    <string name="app_tagline">El juego de los reyes</string>
+
+    <string name="menu_new_game">Jugar</string>
+    <string name="menu_tutorial">Aprender a jugar</string>
+    <string name="menu_stats">Mi historial</string>
+    <string name="menu_ranking">Ranking</string>
+    <string name="menu_prefs">Preferencias</string>
+
+    <string name="name_title">¿Cómo te llamas?</string>
+    <string name="name_hint">Escribe tu nombre</string>
+    <string name="name_play_button">¡Jugar!</string>
+    <string name="name_error_empty">Por favor escribe tu nombre</string>
+    <string name="name_error_too_long">El nombre es muy largo (máx. 15 caracteres)</string>
+
+    <string name="difficulty_title">Nivel de dificultad</string>
+    <string name="difficulty_1">1 — Principiante (~600 ELO)</string>
+    <string name="difficulty_2">2 — Aprendiz (~900 ELO)</string>
+    <string name="difficulty_3">3 — Intermedio (~1200 ELO)</string>
+    <string name="difficulty_4">4 — Avanzado (~1500 ELO)</string>
+    <string name="difficulty_5">5 — Experto (~1800 ELO)</string>
+
+    <string name="game_your_turn">Tu turno</string>
+    <string name="game_thinking">Pensando…</string>
+    <string name="game_check">¡Jaque!</string>
+    <string name="game_checkmate">¡Jaque mate!</string>
+    <string name="game_stalemate">¡Tablas! Rey ahogado</string>
+    <string name="game_draw">¡Tablas!</string>
+    <string name="game_resign">Abandonar</string>
+    <string name="game_resign_confirm">¿Seguro que quieres abandonar?</string>
+    <string name="game_resign_yes">Sí, abandonar</string>
+    <string name="game_resign_no">Seguir jugando</string>
+    <string name="game_undo">Deshacer</string>
+
+    <string name="result_win">¡Ganaste!</string>
+    <string name="result_loss">Perdiste</string>
+    <string name="result_draw">Tablas</string>
+    <string name="result_points">+%d puntos</string>
+    <string name="result_time_you">Tu tiempo</string>
+    <string name="result_time_cpu">Tiempo CPU</string>
+    <string name="result_play_again">Jugar de nuevo</string>
+    <string name="result_main_menu">Menú principal</string>
+
+    <string name="tutorial_title">Aprender a jugar</string>
+    <string name="tutorial_progress">Paso %1$d de %2$d</string>
+    <string name="tutorial_next">Siguiente →</string>
+    <string name="tutorial_back">← Atrás</string>
+    <string name="tutorial_finish">¡Finalizar!</string>
+    <string name="tutorial_correct">¡Muy bien!</string>
+    <string name="tutorial_wrong">¡Ups! Intenta de nuevo</string>
+    <string name="tutorial_level_up">¡Lección superada!</string>
+    <string name="lesson_1_title">Lección 1: Peón, Torre y Caballo</string>
+    <string name="lesson_2_title">Lección 2: Alfil, Reina y Rey</string>
+    <string name="lesson_3_title">Lección 3: Jaque y Jaque Mate</string>
+    <string name="lesson_4_title">Lección 4: Movimientos especiales</string>
+    <string name="lesson_5_title">Lección 5: Defensa y Ataque básico</string>
+
+    <string name="stats_title">Mi historial</string>
+    <string name="stats_games">Partidas</string>
+    <string name="stats_wins">Ganadas</string>
+    <string name="stats_losses">Perdidas</string>
+    <string name="stats_draws">Tablas</string>
+    <string name="stats_total_points">Puntos totales</string>
+    <string name="stats_no_games">Aún no has jugado ninguna partida</string>
+
+    <string name="ranking_title">Ranking</string>
+    <string name="ranking_subtitle">Top 5 mejores jugadores</string>
+    <string name="ranking_empty">El ranking está vacío. ¡Sé el primero!</string>
+    <string name="ranking_points">%d pts</string>
+
+    <string name="prefs_title">Preferencias</string>
+    <string name="prefs_name_section">Nombre de jugador</string>
+    <string name="prefs_color_section">Color de tus piezas</string>
+    <string name="prefs_color_white">Blancas</string>
+    <string name="prefs_color_black">Negras</string>
+
+    <string name="ok">Aceptar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="back">Volver</string>
+    <string name="loading">Cargando…</string>
+
+    <!-- Strings de arcade (mantenidos para compatibilidad con layouts residuales) -->
+    <string name="arcade_title">Modo Arcade</string>
+    <string name="arcade_subtitle">Vence a todos los rivales</string>
+    <string name="arcade_rival_locked">Bloqueado</string>
+    <string name="arcade_rival_beaten">Vencido ✓</string>
+    <string name="arcade_rival_current">¡Desafiar!</string>
+    <string name="arcade_boss_label">Jefe final</string>
+    <string name="arcade_retry">Reintentar</string>
+    <string name="arcade_back_menu">Volver al menú</string>
+    <string name="arcade_complete_title">¡Torneo completado!</string>
+    <string name="arcade_complete_subtitle">¡Has vencido al Gran Maestro Marsan!</string>
+    <string name="rival_1_name">Manchita</string>
+    <string name="rival_1_alias">Gata ajedrecista</string>
+    <string name="rival_2_name">Alejandra</string>
+    <string name="rival_2_alias">Profesora</string>
+    <string name="rival_3_name">Laurita</string>
+    <string name="rival_3_alias">Luchadora</string>
+    <string name="rival_4_name">Maca</string>
+    <string name="rival_4_alias">Defensiva</string>
+    <string name="rival_5_name">Cristian</string>
+    <string name="rival_5_alias">Estratega</string>
+    <string name="rival_6_name">Lop585</string>
+    <string name="rival_6_alias">Rápida e impredecible</string>
+    <string name="rival_7_name">Marsan</string>
+    <string name="rival_7_alias">Gran Maestro</string>
+</resources>

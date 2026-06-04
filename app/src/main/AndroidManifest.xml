@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="false"
+        android:theme="@style/Theme.MarsanChess"
+        android:networkSecurityConfig="@xml/network_security_config">
+
+        <activity
+            android:name=".ui.main.MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MarsanChess.Splash"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".ui.game.GameActivity"
+            android:exported="false" android:screenOrientation="portrait"/>
+        <activity android:name=".ui.game.ResultActivity"
+            android:exported="false" android:screenOrientation="portrait"/>
+        <activity android:name=".ui.stats.StatsActivity"
+            android:exported="false" android:screenOrientation="portrait"/>
+        <activity android:name=".ui.prefs.PreferencesActivity"
+            android:exported="false" android:screenOrientation="portrait"/>
+        <activity android:name=".ui.tutorial.TutorialActivity"
+            android:exported="false" android:screenOrientation="portrait"/>
+        <activity android:name=".ui.arcade.ArcadeActivity"
+            android:exported="false" android:screenOrientation="portrait"/>
+        <activity android:name=".ui.ranking.RankingActivity"
+            android:exported="false" android:screenOrientation="portrait"/>
+
+    </application>
+
+</manifest>
