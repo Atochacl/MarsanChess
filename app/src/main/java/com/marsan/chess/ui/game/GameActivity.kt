@@ -252,6 +252,10 @@ class GameActivity : BaseActivity() {
 
                 val newMove = state.lastMove
                 val isNewMove = newMove != null && newMove != previousLastMove
+                // Tablero ANTERIOR a la jugada: se necesita para saber si
+                // fue captura (después de mover, el destino siempre está
+                // ocupado por la pieza que llegó).
+                val boardBeforeMove = previousBoard
 
                 if (isNewMove) {
                     binding.boardView.animBoard = state.board
@@ -274,8 +278,8 @@ class GameActivity : BaseActivity() {
                         state.status == com.marsan.chess.engine.GameStatus.CHECK ||
                         state.status == com.marsan.chess.engine.GameStatus.CHECKMATE ->
                             soundManager.playCheck()
-                        state.board[newMove.toRow, newMove.toCol] != null ||
-                        (previousBoard?.get(newMove.toRow, newMove.toCol) != null) ->
+                        newMove.isEnPassant ||
+                        boardBeforeMove?.get(newMove.toRow, newMove.toCol) != null ->
                             soundManager.playCapture()
                         else ->
                             soundManager.playMove()

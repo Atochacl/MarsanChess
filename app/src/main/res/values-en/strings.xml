@@ -203,6 +203,7 @@
     <string name="recordings_delete_one_yes">Yes, delete</string>
     <string name="recordings_select_mode_title">Select games</string>
     <string name="recordings_delete_selected">Delete selected</string>
+    <string name="recordings_delete_selected_msg">Delete the %1$d selected games?</string>
     <string name="recordings_selected_count">%d game(s) selected</string>
 
 </resources>

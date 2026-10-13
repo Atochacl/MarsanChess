@@ -64,10 +64,9 @@ class GameRecordRepository private constructor(context: Context) {
 
     fun addMove(move: Move) {
         if (!sessionActive) return
-        val from  = "${'a' + move.fromCol}${8 - move.fromRow}"
-        val to    = "${'a' + move.toCol}${8 - move.toRow}"
-        val promo = move.promotion?.name?.lowercase()?.firstOrNull()?.toString() ?: ""
-        val uci   = "$from$to$promo"
+        // UciMoves.toUci: la versión anterior guardaba la coronación a
+        // Caballo como "k" (primera letra de KNIGHT) en vez de "n".
+        val uci   = com.marsan.chess.engine.UciMoves.toUci(move)
         synchronized(sessionMoves) { sessionMoves.add(uci) }
         android.util.Log.d(TAG, "Move added: $uci (total: ${sessionMoves.size})")
     }

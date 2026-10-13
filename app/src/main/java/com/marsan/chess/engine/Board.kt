@@ -149,6 +149,17 @@ class Board {
             }
         }
 
+        // Una torre CAPTURADA en su casilla inicial también anula ese
+        // enroque. Sin esto el FEN seguía anunciando un enroque imposible
+        // (Stockfish analizaba una posición inválida) y el juego podía
+        // permitir enrocar con una torre que ya no existe.
+        when {
+            move.toRow == 7 && move.toCol == 7 -> b.whiteKingsideCastle  = false
+            move.toRow == 7 && move.toCol == 0 -> b.whiteQueensideCastle = false
+            move.toRow == 0 && move.toCol == 7 -> b.blackKingsideCastle  = false
+            move.toRow == 0 && move.toCol == 0 -> b.blackQueensideCastle = false
+        }
+
         // Actualizar posición del rey si capturó al rey enemigo (no debería pasar en juego legal)
         if (piece.type == PieceType.KING) {
             if (piece.color == PieceColor.WHITE) b.whiteKingPos = Pair(move.toRow, move.toCol)
