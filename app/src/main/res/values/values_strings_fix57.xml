@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- fix57: últimos textos localizados -->
+    <string name="two_players_random_color">El color inicial se asignará al azar</string>
+    <string name="default_player_name">Jugador</string>
+    <string name="replay_btn_pause">⏸  Pausar</string>
+</resources>

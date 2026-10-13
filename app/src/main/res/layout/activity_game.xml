@@ -4,187 +4,226 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/rootLayout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/background_primary">
+    android:layout_height="match_parent">
 
-    <!-- ===== ZONA CPU (arriba) ===== -->
+    <!-- ── ZONA CPU ── -->
     <LinearLayout
         android:id="@+id/zoneCpu"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingHorizontal="12dp"
-        android:paddingTop="8dp"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:paddingTop="10dp"
+        android:paddingBottom="6dp"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Reloj CPU -->
         <androidx.cardview.widget.CardView
             android:id="@+id/cardClockCpu"
             android:layout_width="match_parent"
-            android:layout_height="44dp"
-            app:cardBackgroundColor="#E8EDF0"
-            app:cardCornerRadius="8dp"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="12dp"
             app:cardElevation="0dp">
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical"
+                android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:paddingHorizontal="14dp">
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
+                <TextView
+                    android:id="@+id/tvTurnIndicatorCpu"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="▶"
+                    android:textSize="10sp"
+                    android:layout_marginEnd="6dp"
+                    android:visibility="gone"/>
                 <TextView
                     android:id="@+id/tvCpuName"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="CPU"
-                    android:textColor="#555555"
-                    android:textSize="13sp"/>
+                    android:textSize="15sp"
+                    android:textStyle="bold"/>
                 <TextView
                     android:id="@+id/tvClockCpu"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="00:00.00"
-                    android:textColor="#555555"
-                    android:textSize="15sp"
+                    android:text="00:00"
+                    android:textSize="20sp"
                     android:fontFamily="monospace"/>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Piezas comidas por CPU (lo que CPU capturó = piezas blancas del jugador) -->
         <LinearLayout
             android:id="@+id/layoutCapturedByCpu"
             android:layout_width="match_parent"
             android:layout_height="28dp"
             android:orientation="horizontal"
-            android:paddingStart="4dp"
-            android:gravity="center_vertical"/>
+            android:gravity="start|center_vertical"
+            android:paddingHorizontal="4dp"
+            android:paddingTop="4dp"/>
+
     </LinearLayout>
 
-    <!-- ===== TABLERO ===== -->
+    <!-- ── TABLERO ── -->
     <com.marsan.chess.ui.game.BoardView
         android:id="@+id/boardView"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@id/zonePlayer"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/zoneCpu"
+        app:layout_constraintBottom_toTopOf="@id/zonePlayer"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintDimensionRatio="1:1"/>
 
-    <!-- ===== ZONA JUGADOR (abajo) ===== -->
+    <!-- Overlay fin de partida encima del tablero -->
+    <FrameLayout
+        android:id="@+id/overlayContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/boardView"
+        app:layout_constraintStart_toStartOf="@id/boardView"
+        app:layout_constraintEnd_toEndOf="@id/boardView"/>
+
+    <!-- Pensando... -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/layoutThinking"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="6dp"
+        app:cardBackgroundColor="#FFFFFFFF"
+        app:layout_constraintTop_toTopOf="@id/boardView"
+        app:layout_constraintBottom_toBottomOf="@id/boardView"
+        app:layout_constraintStart_toStartOf="@id/boardView"
+        app:layout_constraintEnd_toEndOf="@id/boardView">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="12dp">
+            <ProgressBar
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginEnd="10dp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/game_thinking"
+                android:textSize="14sp"
+                android:textColor="#111111"
+                android:textStyle="bold"/>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- ── ZONA JUGADOR ── -->
     <LinearLayout
         android:id="@+id/zonePlayer"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingHorizontal="12dp"
-        android:paddingBottom="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+        android:paddingTop="6dp"
+        android:paddingBottom="4dp"
+        app:layout_constraintBottom_toTopOf="@id/layoutButtons"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Piezas comidas por jugador (lo que el jugador capturó = piezas negras de CPU) -->
         <LinearLayout
             android:id="@+id/layoutCapturedByPlayer"
             android:layout_width="match_parent"
             android:layout_height="28dp"
             android:orientation="horizontal"
-            android:paddingStart="4dp"
-            android:gravity="center_vertical"/>
+            android:gravity="start|center_vertical"
+            android:paddingHorizontal="4dp"
+            android:paddingBottom="4dp"/>
 
-        <!-- Reloj jugador -->
         <androidx.cardview.widget.CardView
             android:id="@+id/cardClockPlayer"
             android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:layout_marginTop="2dp"
-            app:cardBackgroundColor="#E8EDF0"
-            app:cardCornerRadius="8dp"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="12dp"
             app:cardElevation="0dp">
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical"
+                android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:paddingHorizontal="14dp">
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
+                <TextView
+                    android:id="@+id/tvTurnIndicatorPlayer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="▶"
+                    android:textSize="10sp"
+                    android:layout_marginEnd="6dp"
+                    android:visibility="gone"/>
                 <TextView
                     android:id="@+id/tvPlayerName"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="Jugador"
-                    android:textColor="#555555"
-                    android:textSize="13sp"/>
+                    android:textSize="15sp"
+                    android:textStyle="bold"/>
                 <TextView
                     android:id="@+id/tvClockPlayer"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="00:00.00"
-                    android:textColor="#555555"
-                    android:textSize="15sp"
+                    android:text="00:00"
+                    android:textSize="20sp"
                     android:fontFamily="monospace"/>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
-        <!-- Botones -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="6dp">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnUndo"
-                style="@style/Widget.MarsanChess.Button.Secondary"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:minHeight="44dp"
-                android:paddingVertical="10dp"
-                android:text="↩ Deshacer"
-                android:layout_marginEnd="6dp"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnResign"
-                style="@style/Widget.MarsanChess.Button.Secondary"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:minHeight="44dp"
-                android:paddingVertical="10dp"
-                android:text="@string/game_resign"
-                android:layout_marginStart="6dp"/>
-        </LinearLayout>
     </LinearLayout>
 
-    <!-- Overlay pensando -->
+    <!-- ── BOTONES — siempre visibles al fondo ──
+         Durante el juego: Deshacer + Abandonar
+         Tras ver tablero: se oculta Deshacer, Abandonar se convierte en Salir -->
     <LinearLayout
-        android:id="@+id/layoutThinking"
-        android:layout_width="wrap_content"
+        android:id="@+id/layoutButtons"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center"
-        android:background="#CC111111"
-        android:paddingHorizontal="20dp"
+        android:paddingHorizontal="16dp"
         android:paddingVertical="10dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@id/boardView"
-        app:layout_constraintEnd_toEndOf="@id/boardView"
-        app:layout_constraintStart_toStartOf="@id/boardView"
-        app:layout_constraintTop_toTopOf="@id/boardView">
-        <ProgressBar
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:indeterminateTint="@color/white"/>
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:text="@string/game_thinking"
-            android:textColor="@color/white"
-            android:textSize="14sp"/>
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnUndo"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:text="@string/game_undo"
+            android:textSize="13sp"
+            android:backgroundTint="@null"
+            android:stateListAnimator="@null"
+            android:layout_marginEnd="8dp"/>
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnResign"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:text="@string/game_resign"
+            android:textSize="13sp"
+            android:backgroundTint="@null"
+            android:stateListAnimator="@null"
+            android:layout_marginStart="8dp"/>
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

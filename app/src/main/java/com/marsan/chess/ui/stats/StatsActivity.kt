@@ -6,96 +6,259 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.view.Gravity
 import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.Toolbar
 import androidx.lifecycle.lifecycleScope
+import com.marsan.chess.R
 import com.marsan.chess.data.repository.GameRepository
+import com.marsan.chess.ui.BaseActivity
+import com.marsan.chess.ui.replay.GameRecordingsActivity
+import com.marsan.chess.ui.main.AppPalettes
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-class StatsActivity : AppCompatActivity() {
+class StatsActivity : BaseActivity() {
 
     companion object {
-        fun start(context: Context, playerName: String = "") {
+        private const val EXTRA_PLAYER_NAME = "player_name"
+        private const val EXTRA_PALETTE_IDX = "palette_idx"
+
+        fun start(context: Context, playerName: String = "", paletteIdx: Int = 0) {
             context.startActivity(Intent(context, StatsActivity::class.java).apply {
-                putExtra("player_name", playerName)
+                putExtra(EXTRA_PLAYER_NAME, playerName)
+                putExtra(EXTRA_PALETTE_IDX, paletteIdx)
             })
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val repository = GameRepository.getInstance(this)
-        val playerName = intent.getStringExtra("player_name") ?: ""
-        val d = resources.displayMetrics.density
 
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#F5F5F5"))
-        }
+        val repository = GameRepository.getInstance(this)
+        val playerName = intent.getStringExtra(EXTRA_PLAYER_NAME) ?: ""
+        val paletteIdx = intent.getIntExtra(EXTRA_PALETTE_IDX, 0)
+            .coerceIn(0, AppPalettes.all.size - 1)
+        val palette    = AppPalettes.all[paletteIdx]
+        val d          = resources.displayMetrics.density
+
+        val root = RelativeLayout(this).apply { setBackgroundColor(palette.background) }
+
+        // Toolbar
         val toolbar = Toolbar(this).apply {
-            title = "Mi historial"
-            setTitleTextColor(Color.parseColor("#111111"))
-            setBackgroundColor(Color.parseColor("#F5F5F5"))
+            id = android.view.View.generateViewId()
+            title = getString(R.string.stats_title)
+            setTitleTextColor(palette.textPrimary)
+            setBackgroundColor(palette.background)
+            layoutParams = RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.MATCH_PARENT,
+                RelativeLayout.LayoutParams.WRAP_CONTENT
+            ).apply { addRule(RelativeLayout.ALIGN_PARENT_TOP) }
         }
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         toolbar.setNavigationOnClickListener { finish() }
+        toolbar.navigationIcon?.setTint(palette.accent)
         root.addView(toolbar)
 
-        val scroll = ScrollView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT)
+        // Botón eliminar fijo al fondo
+        val btnClearId = android.view.View.generateViewId()
+        if (playerName.isNotEmpty()) {
+            val btnClear = android.widget.Button(this).apply {
+                id       = btnClearId
+                text     = getString(R.string.stats_delete_history)
+                textSize = 13f
+                setTextColor(Color.parseColor("#C04040"))
+                background = GradientDrawable().apply {
+                    shape        = GradientDrawable.RECTANGLE
+                    cornerRadius = 12 * d
+                    setColor(Color.parseColor("#FFF5F5"))
+                    setStroke((1.5f * d).toInt(), Color.parseColor("#C04040"))
+                }
+                layoutParams = RelativeLayout.LayoutParams(
+                    RelativeLayout.LayoutParams.WRAP_CONTENT,
+                    RelativeLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    addRule(RelativeLayout.ALIGN_PARENT_BOTTOM)
+                    addRule(RelativeLayout.CENTER_HORIZONTAL)
+                    bottomMargin = (24 * d).toInt()
+                }
+                val ph = (24 * d).toInt(); val pv = (12 * d).toInt()
+                setPadding(ph, pv, ph, pv)
+                setOnClickListener {
+                    AlertDialog.Builder(this@StatsActivity)
+                        .setTitle(getString(R.string.stats_delete_history))
+                        .setMessage(getString(R.string.stats_delete_confirm))
+                        .setPositiveButton(getString(R.string.stats_delete_yes)) { _, _ ->
+                            lifecycleScope.launch { repository.clearHistory(playerName) }
+                        }
+                        .setNegativeButton(getString(R.string.cancel), null)
+                        .show()
+                }
+            }
+            root.addView(btnClear)
         }
+
+        // Botón "Ver partidas grabadas" fijo arriba del botón eliminar
+        val btnRecordingsId = android.view.View.generateViewId()
+        val btnRecordings = android.widget.Button(this).apply {
+            id = btnRecordingsId
+            text = getString(R.string.stats_see_recordings)
+            textSize = 13f
+            setTextColor(palette.accent)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape        = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = 12 * d
+                setColor(palette.buttonBg)
+                setStroke((1.5f * d).toInt(), palette.accent)
+            }
+            layoutParams = RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.WRAP_CONTENT,
+                RelativeLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                addRule(RelativeLayout.ABOVE, if (playerName.isNotEmpty()) btnClearId else -1)
+                addRule(RelativeLayout.CENTER_HORIZONTAL)
+                bottomMargin = (8 * d).toInt()
+                if (playerName.isEmpty()) {
+                    addRule(RelativeLayout.ALIGN_PARENT_BOTTOM)
+                    bottomMargin = (24 * d).toInt()
+                }
+            }
+            val ph = (20 * d).toInt(); val pv = (10 * d).toInt(); setPadding(ph, pv, ph, pv)
+            setOnClickListener {
+                GameRecordingsActivity.start(this@StatsActivity, paletteIdx)
+            }
+        }
+        root.addView(btnRecordings)
+
+        val scroll = ScrollView(this).apply {
+            layoutParams = RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.MATCH_PARENT,
+                RelativeLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                addRule(RelativeLayout.BELOW, toolbar.id)
+                addRule(RelativeLayout.ABOVE, btnRecordingsId)
+            }
+        }
+
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            val p = (20*d).toInt(); setPadding(p, p, p, p)
+            val p = (20 * d).toInt(); setPadding(p, (24 * d).toInt(), p, p)
         }
 
+        // Nombre del jugador
         container.addView(TextView(this).apply {
-            text = if (playerName.isEmpty()) "Estadisticas" else playerName
-            textSize = 22f; setTextColor(Color.parseColor("#111111"))
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = (4*d).toInt() }
+            text     = if (playerName.isEmpty()) getString(R.string.stats_title) else playerName
+            textSize = 26f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(palette.textPrimary)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (4 * d).toInt() }
         })
         container.addView(TextView(this).apply {
-            text = if (playerName.isEmpty()) "Ingresa tu nombre en una partida" else "Historial personal"
-            textSize = 13f; setTextColor(Color.parseColor("#888888"))
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = (16*d).toInt() }
+            text     = if (playerName.isEmpty()) getString(R.string.stats_enter_name)
+                       else getString(R.string.stats_personal)
+            textSize = 13f; setTextColor(palette.accent)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (24 * d).toInt() }
         })
 
-        val statsCard = makeCard(d)
-        val statsGrid = LinearLayout(this).apply {
+        // ── Tarjeta estadísticas ──────────────────────────────────────
+        val statsCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background  = GradientDrawable().apply {
+                shape        = GradientDrawable.RECTANGLE
+                cornerRadius = 16 * d
+                setColor(palette.surface)
+                setStroke((1 * d).toInt(), palette.border)
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (16 * d).toInt() }
+        }
+
+        // Fila 1: Jugadas | Ganadas | Perdidas
+        val row1 = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding((8*d).toInt(), (12*d).toInt(), (8*d).toInt(), (12*d).toInt())
+            setPadding((12 * d).toInt(), (20 * d).toInt(), (12 * d).toInt(), (14 * d).toInt())
         }
-        val tvPlayed    = makeStatCol(statsGrid, "0", "Jugadas",    Color.parseColor("#111111"), d)
-        val tvWins      = makeStatCol(statsGrid, "0", "Ganadas",    Color.parseColor("#111111"), d)
-        val tvLosses    = makeStatCol(statsGrid, "0", "Perdidas",   Color.parseColor("#888888"), d)
-        val tvDraws     = makeStatCol(statsGrid, "0", "Tablas",     Color.parseColor("#888888"), d)
-        val tvAbandoned = makeStatCol(statsGrid, "0", "Abandon.",   Color.parseColor("#C04040"), d)
-        statsCard.addView(statsGrid)
-        statsCard.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = (16*d).toInt() }
+
+        // Fila 2: Tablas | Abandonadas (con separador visual)
+        val row2 = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background  = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.argb(25,
+                    Color.red(palette.border),
+                    Color.green(palette.border),
+                    Color.blue(palette.border)
+                ))
+            }
+            setPadding((12 * d).toInt(), (14 * d).toInt(), (12 * d).toInt(), (20 * d).toInt())
+        }
+
+        // Colores semánticos por categoría
+        val colorPlayed = palette.textPrimary
+        val colorWin    = Color.parseColor("#2E7D32")   // verde
+        val colorLoss   = Color.parseColor("#C62828")   // rojo
+        val colorDraw   = palette.textSecondary
+        val colorResign = Color.parseColor("#B71C1C")   // rojo oscuro
+
+        val tvPlayed    = makeStatCell(row1, "0", getString(R.string.stats_games),    colorPlayed, d, weight = 1.1f)
+        val tvWins      = makeStatCell(row1, "0", getString(R.string.stats_wins),     colorWin,    d)
+        val tvLosses    = makeStatCell(row1, "0", getString(R.string.stats_losses),   colorLoss,   d)
+
+        val tvDraws     = makeStatCell(row2, "0", getString(R.string.stats_draws),    colorDraw,   d)
+        val tvAbandoned = makeStatCell(row2, "0", getString(R.string.stats_abandoned),colorResign, d, weight = 1.4f)
+
+        // Celda vacía para equilibrar row2 (mismo peso que las otras)
+        row2.addView(LinearLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+
+        statsCard.addView(row1)
+        statsCard.addView(row2)
         container.addView(statsCard)
 
-        val pointsCard = makeCard(d)
-        val pointsRow  = LinearLayout(this).apply {
+        // ── Tarjeta puntos ────────────────────────────────────────────
+        val pointsCard = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding((16*d).toInt(), (14*d).toInt(), (16*d).toInt(), (14*d).toInt())
+            gravity     = Gravity.CENTER_VERTICAL
+            background  = GradientDrawable().apply {
+                shape        = GradientDrawable.RECTANGLE
+                cornerRadius = 16 * d
+                setColor(palette.accent)
+            }
+            setPadding((20 * d).toInt(), (18 * d).toInt(), (20 * d).toInt(), (18 * d).toInt())
         }
         val tvPointsLabel = TextView(this).apply {
-            text = "Puntos totales"; textSize = 14f; setTextColor(Color.parseColor("#555555"))
+            text     = getString(R.string.stats_total_points)
+            textSize = 15f
+            setTextColor(Color.argb(200,
+                Color.red(palette.surface),
+                Color.green(palette.surface),
+                Color.blue(palette.surface)
+            ))
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
         val tvPoints = TextView(this).apply {
-            text = "0 pts"; textSize = 20f; typeface = Typeface.MONOSPACE; setTextColor(Color.parseColor("#111111"))
+            text     = "0 pts"
+            textSize = 24f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(palette.surface)
         }
-        pointsRow.addView(tvPointsLabel); pointsRow.addView(tvPoints)
-        pointsCard.addView(pointsRow)
-        pointsCard.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        pointsCard.addView(tvPointsLabel)
+        pointsCard.addView(tvPoints)
         container.addView(pointsCard)
 
-        scroll.addView(container); root.addView(scroll)
+        scroll.addView(container)
+        root.addView(scroll)
         setContentView(root)
 
         if (playerName.isNotEmpty()) {
@@ -106,35 +269,50 @@ class StatsActivity : AppCompatActivity() {
                     tvWins.text      = player.gamesWon.toString()
                     tvLosses.text    = player.gamesLost.toString()
                     tvDraws.text     = player.gamesDraw.toString()
-                    val abandoned    = (player.gamesPlayed - player.gamesWon - player.gamesLost - player.gamesDraw).coerceAtLeast(0)
-                    tvAbandoned.text = abandoned.toString()
+                    tvAbandoned.text = player.gamesResigned.toString()
                     tvPoints.text    = "${player.totalPoints} pts"
                 }
             }
         }
     }
 
-    private fun makeCard(d: Float) = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        background  = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE; cornerRadius = 12*d
-            setColor(Color.WHITE); setStroke((1*d).toInt(), Color.parseColor("#D0D0D0"))
-        }
-    }
-
-    private fun makeStatCol(parent: LinearLayout, value: String, label: String, valueColor: Int, d: Float): TextView {
+    /** Celda de estadística: número grande + etiqueta pequeña debajo */
+    private fun makeStatCell(
+        parent: LinearLayout,
+        value: String,
+        label: String,
+        valueColor: Int,
+        d: Float,
+        weight: Float = 1f
+    ): TextView {
         val col = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; gravity = android.view.Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            setPadding((2*d).toInt(), (8*d).toInt(), (2*d).toInt(), (8*d).toInt())
+            orientation = LinearLayout.VERTICAL
+            gravity     = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, weight
+            )
+            setPadding((4 * d).toInt(), (4 * d).toInt(), (4 * d).toInt(), (4 * d).toInt())
         }
         val tvVal = TextView(this).apply {
-            text = value; textSize = 17f; setTextColor(valueColor); gravity = android.view.Gravity.CENTER
+            text     = value
+            textSize = 32f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity  = Gravity.CENTER
+            setTextColor(valueColor)
         }
         val tvLbl = TextView(this).apply {
-            text = label; textSize = 10f; setTextColor(Color.parseColor("#888888")); gravity = android.view.Gravity.CENTER
+            text     = label
+            textSize = 11f
+            gravity  = Gravity.CENTER
+            setTextColor(Color.parseColor("#888888"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (2 * d).toInt() }
         }
-        col.addView(tvVal); col.addView(tvLbl); parent.addView(col)
+        col.addView(tvVal)
+        col.addView(tvLbl)
+        parent.addView(col)
         return tvVal
     }
 }

@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 
-// ===================== ENTIDADES =====================
+// ===================== ENTIDADES EXISTENTES =====================
 
 @Entity(tableName = "players")
 data class PlayerEntity(
@@ -14,6 +14,7 @@ data class PlayerEntity(
     val gamesWon: Int = 0,
     val gamesLost: Int = 0,
     val gamesDraw: Int = 0,
+    val gamesResigned: Int = 0,
     val lastPlayed: Long = System.currentTimeMillis()
 )
 
@@ -21,10 +22,10 @@ data class PlayerEntity(
 data class GameHistoryEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val playerName: String,
-    val mode: String,           // "NORMAL" | "ARCADE"
-    val difficulty: Int,        // 1-5
-    val arcadeRivalId: Int?,    // null si es partida normal
-    val result: String,         // "WIN" | "LOSS" | "DRAW"
+    val mode: String,
+    val difficulty: Int,
+    val arcadeRivalId: Int?,
+    val result: String,
     val pointsEarned: Int,
     val playerTimeSeconds: Long,
     val cpuTimeSeconds: Long,
@@ -47,7 +48,38 @@ data class TutorialProgressEntity(
     val completedAt: Long? = null
 )
 
-// ===================== DAOs =====================
+// ===================== NUEVA ENTIDAD: GRABACIÓN DE PARTIDAS =====================
+
+/**
+ * Guarda una partida completa con todos sus movimientos en notación UCI.
+ *
+ * movesJson: lista de movimientos serializada como JSON array de strings UCI
+ *   e.g. ["e2e4","e7e5","g1f3","b8c6"]
+ *
+ * boardStateJson: FEN inicial (siempre posición estándar, pero guardado
+ *   por extensibilidad para variantes futuras)
+ *
+ * mode: "NORMAL" | "TIMED" | "TWO_PLAYER"
+ * result: "WIN" | "LOSS" | "DRAW" | "RESIGN" | "ONGOING"
+ * playerColor: "WHITE" | "BLACK"
+ */
+@Entity(tableName = "game_records")
+data class GameRecordEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val startTimestamp: Long = System.currentTimeMillis(),
+    val endTimestamp: Long = 0L,
+    val playerName: String = "",
+    val mode: String = "NORMAL",
+    val difficulty: Int = 3,
+    val result: String = "ONGOING",
+    val playerColor: String = "WHITE",
+    val movesJson: String = "[]",          // JSON array de strings UCI
+    val totalMoves: Int = 0,
+    val durationSeconds: Long = 0L,
+    val paletteIdx: Int = 0
+)
+
+// ===================== DAOs EXISTENTES =====================
 
 @Dao
 interface PlayerDao {
@@ -61,14 +93,15 @@ interface PlayerDao {
     suspend fun insertOrUpdate(player: PlayerEntity)
 
     @Query("""
-        UPDATE players SET 
-        totalPoints = totalPoints + :points,
-        gamesPlayed = gamesPlayed + 1,
-        gamesWon = gamesWon + :won,
-        gamesLost = gamesLost + :lost,
-        gamesDraw = gamesDraw + :draw,
-        lastPlayed = :timestamp
-        WHERE name = :name
+        UPDATE players SET
+        totalPoints  = totalPoints  + :points,
+        gamesPlayed  = gamesPlayed  + 1,
+        gamesWon     = gamesWon     + :won,
+        gamesLost    = gamesLost    + :lost,
+        gamesDraw    = gamesDraw    + :draw,
+        gamesResigned= gamesResigned+ :resigned,
+        lastPlayed   = :timestamp
+        WHERE name   = :name
     """)
     suspend fun updateStats(
         name: String,
@@ -76,11 +109,24 @@ interface PlayerDao {
         won: Int,
         lost: Int,
         draw: Int,
+        resigned: Int,
         timestamp: Long = System.currentTimeMillis()
     )
 
     @Query("SELECT * FROM players WHERE name = :name LIMIT 1")
     fun observePlayer(name: String): Flow<PlayerEntity?>
+
+    @Query("""
+        UPDATE players SET
+        totalPoints   = 0,
+        gamesPlayed   = 0,
+        gamesWon      = 0,
+        gamesLost     = 0,
+        gamesDraw     = 0,
+        gamesResigned = 0
+        WHERE name    = :name
+    """)
+    suspend fun resetStats(name: String)
 }
 
 @Dao
@@ -93,6 +139,9 @@ interface GameHistoryDao {
 
     @Query("SELECT COUNT(*) FROM game_history WHERE playerName = :name")
     suspend fun getGamesCount(name: String): Int
+
+    @Query("DELETE FROM game_history WHERE playerName = :name")
+    suspend fun deleteHistoryForPlayer(name: String)
 }
 
 @Dao
@@ -131,6 +180,43 @@ interface TutorialProgressDao {
     suspend fun completedLessonsCount(): Int
 }
 
+// ===================== NUEVO DAO: GRABACIONES =====================
+
+@Dao
+interface GameRecordDao {
+    /** Inserta un nuevo registro y devuelve su ID generado */
+    @Insert
+    suspend fun insert(record: GameRecordEntity): Long
+
+    /** Actualiza un registro existente (para añadir movimientos progresivamente) */
+    @Update
+    suspend fun update(record: GameRecordEntity)
+
+    /** Obtiene todas las partidas ordenadas por fecha desc */
+    @Query("SELECT * FROM game_records ORDER BY startTimestamp DESC")
+    fun getAll(): Flow<List<GameRecordEntity>>
+
+    /** Obtiene una partida por ID */
+    @Query("SELECT * FROM game_records WHERE id = :id")
+    suspend fun getById(id: Int): GameRecordEntity?
+
+    /** Elimina todas las grabaciones */
+    @Query("DELETE FROM game_records")
+    suspend fun deleteAll()
+
+    /** Elimina una grabación específica por objeto */
+    @Delete
+    suspend fun delete(record: GameRecordEntity)
+
+    /** Elimina una grabación por ID */
+    @Query("DELETE FROM game_records WHERE id = :id")
+    suspend fun deleteById(id: Int)
+
+    /** Cuenta total de grabaciones */
+    @Query("SELECT COUNT(*) FROM game_records")
+    suspend fun count(): Int
+}
+
 // ===================== BASE DE DATOS =====================
 
 @Database(
@@ -138,9 +224,10 @@ interface TutorialProgressDao {
         PlayerEntity::class,
         GameHistoryEntity::class,
         ArcadeProgressEntity::class,
-        TutorialProgressEntity::class
+        TutorialProgressEntity::class,
+        GameRecordEntity::class        // ← nueva entidad
     ],
-    version = 1,
+    version = 3,                       // ← bump de versión
     exportSchema = false
 )
 abstract class MarsanChessDatabase : RoomDatabase() {
@@ -148,6 +235,7 @@ abstract class MarsanChessDatabase : RoomDatabase() {
     abstract fun gameHistoryDao(): GameHistoryDao
     abstract fun arcadeProgressDao(): ArcadeProgressDao
     abstract fun tutorialProgressDao(): TutorialProgressDao
+    abstract fun gameRecordDao(): GameRecordDao   // ← nuevo DAO
 
     companion object {
         @Volatile private var INSTANCE: MarsanChessDatabase? = null

@@ -42,7 +42,16 @@ android {
         viewBinding true
     }
 
+    // ── EMPAQUETADO ──────────────────────────────────────────────────
+    // useLegacyPackaging = true es OBLIGATORIO para Stockfish:
+    // AGP moderno por defecto comprime los .so dentro del APK y los
+    // mapea en memoria sin extraerlos a disco (nativeLibraryDir queda
+    // vacío). ProcessBuilder necesita un archivo real en disco para
+    // poder ejecutarlo, así que forzamos la extracción tradicional.
     packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
         resources {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }

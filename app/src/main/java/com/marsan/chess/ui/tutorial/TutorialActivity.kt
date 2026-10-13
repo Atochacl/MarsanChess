@@ -1,14 +1,9 @@
 package com.marsan.chess.ui.tutorial
 
-import android.content.Context
-import android.content.Intent
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
+import com.marsan.chess.ui.BaseActivity
 
-class TutorialActivity : AppCompatActivity() {
-    companion object {
-        fun start(context: Context) {}
-    }
+class TutorialActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         finish()

@@ -1,58 +1,67 @@
 package com.marsan.chess.util
 
 import android.content.Context
-import androidx.core.content.edit
+import android.content.SharedPreferences
 import com.marsan.chess.data.model.PlayerPieceColor
 
-class PreferencesManager(context: Context) {
+class PreferencesManager private constructor(context: Context) {
 
-    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     var playerName: String
-        get() = prefs.getString(KEY_NAME, "") ?: ""
-        set(value) = prefs.edit { putString(KEY_NAME, value) }
+        get()      = prefs.getString(KEY_PLAYER_NAME, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_PLAYER_NAME, value).apply()
 
-    var lastDifficulty: Int
-        get() = prefs.getInt(KEY_DIFFICULTY, 3)
-        set(value) = prefs.edit { putInt(KEY_DIFFICULTY, value) }
+    var nameAsked: Boolean
+        get()      = prefs.getBoolean(KEY_NAME_ASKED, false)
+        set(value) = prefs.edit().putBoolean(KEY_NAME_ASKED, value).apply()
 
     var playerPieceColor: PlayerPieceColor
-        get() = PlayerPieceColor.valueOf(
-            prefs.getString(KEY_PIECE_COLOR, PlayerPieceColor.WHITE.name) ?: PlayerPieceColor.WHITE.name)
-        set(value) = prefs.edit { putString(KEY_PIECE_COLOR, value.name) }
+        get() {
+            val name = prefs.getString(KEY_PIECE_COLOR, PlayerPieceColor.WHITE.name)
+                ?: PlayerPieceColor.WHITE.name
+            return runCatching { PlayerPieceColor.valueOf(name) }.getOrDefault(PlayerPieceColor.WHITE)
+        }
+        set(value) = prefs.edit().putString(KEY_PIECE_COLOR, value.name).apply()
 
-    var tutorialCompleted: Boolean
-        get() = prefs.getBoolean(KEY_TUTORIAL_DONE, false)
-        set(value) = prefs.edit { putBoolean(KEY_TUTORIAL_DONE, value) }
+    var pieceStyle: Int
+        get()      = prefs.getInt(KEY_PIECE_STYLE, 3)   // 3 = piezas estilo Lichess por defecto
+        set(value) = prefs.edit().putInt(KEY_PIECE_STYLE, value).apply()
 
-    var tutorialSuggested: Boolean
-        get() = prefs.getBoolean(KEY_TUTORIAL_SUGGESTED, false)
-        set(value) = prefs.edit { putBoolean(KEY_TUTORIAL_SUGGESTED, value) }
+    var activePaletteIndex: Int
+        get()      = prefs.getInt(KEY_PALETTE_IDX, 0)
+        set(value) = prefs.edit().putInt(KEY_PALETTE_IDX, value).apply()
 
-    var isFirstLaunch: Boolean
-        get() = prefs.getBoolean(KEY_FIRST_LAUNCH, true)
-        set(value) = prefs.edit { putBoolean(KEY_FIRST_LAUNCH, value) }
+    var lastDifficulty: Int
+        get()      = prefs.getInt(KEY_LAST_DIFFICULTY, 3)
+        set(value) = prefs.edit().putInt(KEY_LAST_DIFFICULTY, value).apply()
 
-    // true = ya se le pidió el nombre al menos una vez
-    var nameAsked: Boolean
-        get() = prefs.getBoolean(KEY_NAME_ASKED, false)
-        set(value) = prefs.edit { putBoolean(KEY_NAME_ASKED, value) }
+    var selectedLanguage: String
+        get()      = prefs.getString(KEY_LANGUAGE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_LANGUAGE, value).apply()
+
+    /** Si true, cada partida se graba con todos sus movimientos */
+    var recordingEnabled: Boolean
+        get()      = prefs.getBoolean(KEY_RECORDING, true)
+        set(value) = prefs.edit().putBoolean(KEY_RECORDING, value).apply()
 
     companion object {
-        private const val PREFS_NAME             = "marsan_chess_prefs"
-        private const val KEY_NAME               = "player_name"
-        private const val KEY_DIFFICULTY         = "last_difficulty"
-        private const val KEY_TUTORIAL_DONE      = "tutorial_completed"
-        private const val KEY_TUTORIAL_SUGGESTED = "tutorial_suggested"
-        private const val KEY_FIRST_LAUNCH       = "first_launch"
-        private const val KEY_NAME_ASKED         = "name_asked"
-        private const val KEY_PIECE_COLOR        = "player_piece_color"
+        private const val PREFS_NAME          = "marsan_chess_prefs"
+        private const val KEY_PLAYER_NAME     = "player_name"
+        private const val KEY_NAME_ASKED      = "name_asked"
+        private const val KEY_PIECE_COLOR     = "piece_color"
+        private const val KEY_PIECE_STYLE     = "piece_style"
+        private const val KEY_PALETTE_IDX     = "palette_idx"
+        private const val KEY_LAST_DIFFICULTY = "last_difficulty"
+        private const val KEY_LANGUAGE        = "selected_language"
+        private const val KEY_RECORDING       = "recording_enabled"
 
         @Volatile private var INSTANCE: PreferencesManager? = null
-        fun getInstance(context: Context): PreferencesManager {
-            return INSTANCE ?: synchronized(this) {
+
+        fun getInstance(context: Context): PreferencesManager =
+            INSTANCE ?: synchronized(this) {
                 PreferencesManager(context.applicationContext).also { INSTANCE = it }
             }
-        }
     }
 }

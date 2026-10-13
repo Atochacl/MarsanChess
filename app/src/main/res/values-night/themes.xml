@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Marsan Chess no tiene modo oscuro, siempre usa tema claro -->
+    <!-- Marsan Chess no tiene modo oscuro: siempre usa tema claro -->
     <style name="Theme.MarsanChess" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/accent</item>
         <item name="colorPrimaryVariant">@color/text_secondary</item>
@@ -18,9 +18,10 @@
         <item name="windowNoTitle">true</item>
     </style>
 
-    <style name="Theme.MarsanChess.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/background_primary</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <item name="postSplashScreenTheme">@style/Theme.MarsanChess</item>
+    <style name="Theme.MarsanChess.Splash" parent="Theme.MarsanChess">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 </resources>

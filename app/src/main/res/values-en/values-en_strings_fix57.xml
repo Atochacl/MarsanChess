@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- fix57: last localized strings -->
+    <string name="two_players_random_color">Starting color will be assigned at random</string>
+    <string name="default_player_name">Player</string>
+    <string name="replay_btn_pause">⏸  Pause</string>
+</resources>

@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Marsan Chess</string>
+    <string name="app_tagline">Version 1.0 · 2026</string>
+
+    <string name="menu_new_game">Play</string>
+    <string name="menu_tutorial">Learn to play</string>
+    <string name="menu_stats">My history</string>
+    <string name="menu_ranking">Ranking</string>
+    <string name="menu_prefs">Preferences</string>
+
+    <string name="name_title">What\'s your name?</string>
+    <string name="name_hint">Enter your name</string>
+    <string name="name_play_button">Play!</string>
+    <string name="name_error_empty">Please enter your name</string>
+    <string name="name_error_too_long">Name too long (max 15 characters)</string>
+
+    <string name="difficulty_title">Select difficulty</string>
+    <string name="difficulty_1_label">Beginner</string>
+    <string name="difficulty_2_label">Novice</string>
+    <string name="difficulty_3_label">Intermediate</string>
+    <string name="difficulty_4_label">Advanced</string>
+    <string name="difficulty_5_label">Master</string>
+    <string name="difficulty_1_elo">200 ELO</string>
+    <string name="difficulty_2_elo">600 ELO</string>
+    <string name="difficulty_3_elo">1000 ELO</string>
+    <string name="difficulty_4_elo">1600 ELO</string>
+    <string name="difficulty_5_elo">2200+ ELO</string>
+
+    <string name="game_mode_normal">Normal game</string>
+    <string name="game_mode_timed">Timed game</string>
+    <string name="game_mode_normal_sub">No time limit</string>
+    <string name="game_mode_timed_sub">Choose minutes per player</string>
+    <string name="game_mode_two_players">2 Players</string>
+    <string name="game_mode_two_players_sub">Two players on the same device</string>
+    <string name="game_time_input_title">Time per player</string>
+    <string name="game_time_continue">Continue</string>
+    <string name="game_time_desc">Select the duration for each player:</string>
+    <string name="game_time_minutes">minutes per player</string>
+
+    <string name="game_your_turn">Your turn</string>
+    <string name="game_thinking">Thinking...</string>
+    <string name="game_check">Check!</string>
+    <string name="game_checkmate">Checkmate!</string>
+    <string name="game_stalemate">Draw! Stalemate</string>
+    <string name="game_draw">Draw!</string>
+    <string name="game_resign">Resign</string>
+    <string name="game_resign_confirm">Are you sure you want to resign?</string>
+    <string name="game_resign_yes">Yes, resign</string>
+    <string name="game_resign_no">Keep playing</string>
+    <string name="game_undo">Undo</string>
+    <string name="game_exit_button">Exit</string>
+
+    <!-- Game end vs CPU -->
+    <string name="end_checkmate_win">You checkmated the CPU</string>
+    <string name="end_checkmate_loss">The CPU checkmated you</string>
+    <string name="end_stalemate">Draw by stalemate</string>
+    <string name="end_insufficient">Draw by insufficient material</string>
+    <string name="end_timeout_win">The CPU ran out of time</string>
+    <string name="end_timeout_loss">Your time ran out</string>
+    <string name="end_resign">You resigned the game</string>
+    <string name="end_view_board">View board</string>
+    <string name="end_play_again">New game</string>
+    <string name="end_main_menu">Main menu</string>
+
+    <!-- Neutral end reasons (no CPU reference, for 2-player mode) -->
+    <string name="end_reason_checkmate">By checkmate</string>
+    <string name="end_reason_stalemate">Draw by stalemate</string>
+    <string name="end_reason_insufficient">Draw by insufficient material</string>
+    <string name="end_reason_timeout">On time</string>
+    <string name="end_reason_resign">By resignation</string>
+
+    <!-- Results -->
+    <string name="result_win">You won!</string>
+    <string name="result_loss">You lost</string>
+    <string name="result_draw">Draw</string>
+    <string name="result_points">+%d points</string>
+    <string name="result_time_you">Your time</string>
+    <string name="result_time_cpu">CPU time</string>
+    <string name="result_play_again">Play again</string>
+    <string name="result_main_menu">Main menu</string>
+
+    <!-- 2 Players -->
+    <string name="two_players_start_white">White\'s turn</string>
+    <string name="two_players_start_black">Black\'s turn</string>
+    <string name="two_players_player1">Player 1</string>
+    <string name="two_players_player2">Player 2</string>
+    <string name="two_players_white">White</string>
+    <string name="two_players_black">Black</string>
+    <string name="two_players_wins_checkmate">%1$s (%2$s) wins by checkmate</string>
+    <string name="two_players_wins_timeout">%1$s (%2$s) wins on time</string>
+    <string name="two_players_draw_stalemate">Draw - stalemate</string>
+    <string name="two_players_draw_material">Draw - insufficient material</string>
+    <string name="two_players_draw">Game drawn</string>
+    <string name="two_players_resign">%1$s (%2$s) resigns</string>
+    <string name="two_players_resign_wins">%1$s (%2$s) wins</string>
+
+    <!-- History -->
+    <string name="stats_title">My history</string>
+    <string name="stats_games">Games</string>
+    <string name="stats_wins">Won</string>
+    <string name="stats_losses">Lost</string>
+    <string name="stats_draws">Draws</string>
+    <string name="stats_abandoned">Resigned</string>
+    <string name="stats_total_points">Total points</string>
+    <string name="stats_no_games">You haven\'t played any games yet</string>
+    <string name="stats_personal">Personal history</string>
+    <string name="stats_enter_name">Enter your name in a game first</string>
+    <string name="stats_delete_history">Delete history</string>
+    <string name="stats_delete_confirm">Are you sure you want to delete all your history?</string>
+    <string name="stats_delete_yes">Yes, delete</string>
+    <string name="stats_see_recordings">View recorded games</string>
+
+    <!-- Preferences -->
+    <string name="prefs_title">Preferences</string>
+    <string name="prefs_name_section">PLAYER NAME</string>
+    <string name="prefs_name_tap">Tap to change your name</string>
+    <string name="prefs_name_no_name">No name</string>
+    <string name="prefs_name_change_title">Change name</string>
+    <string name="prefs_name_save">Save</string>
+    <string name="prefs_color_section">YOUR PIECE COLOR</string>
+    <string name="prefs_color_white">White</string>
+    <string name="prefs_color_black">Black</string>
+    <string name="prefs_color_random">Random</string>
+    <string name="prefs_color_white_desc">You play with white pieces. CPU plays with black.</string>
+    <string name="prefs_color_black_desc">You play with black pieces. CPU plays with white.</string>
+    <string name="prefs_color_random_desc">A random color will be assigned at the start of each game.</string>
+    <string name="prefs_piece_style_section">PIECE STYLE</string>
+    <string name="prefs_piece_style_1">Pixel art</string>
+    <string name="prefs_piece_style_2">Classic</string>
+    <string name="prefs_piece_style_3">Lichess Style</string>
+    <string name="prefs_piece_style_1_desc">Retro pixel art pieces - the game\'s original style.</string>
+    <string name="prefs_piece_style_2_desc">Classic Unicode chess symbols.</string>
+    <string name="prefs_piece_style_3_desc">Lichess style.</string>
+    <string name="prefs_recording_section">GAME RECORDING</string>
+    <string name="prefs_recording_label">Record games</string>
+    <string name="prefs_recording_desc">Saves all moves from each game so you can review them later</string>
+    <string name="prefs_recording_on">Enabled</string>
+    <string name="prefs_recording_off">Disabled</string>
+    <string name="prefs_language_section">LANGUAGE</string>
+    <string name="prefs_language_tap">Tap to change the app language</string>
+
+    <!-- Language -->
+    <string name="lang_select_title">Select your language</string>
+    <string name="lang_accept">Accept</string>
+
+    <!-- Ranking -->
+    <string name="ranking_title">Ranking</string>
+    <string name="ranking_subtitle">Top 5 players</string>
+    <string name="ranking_empty">The ranking is empty. Be the first!</string>
+    <string name="ranking_points">%d pts</string>
+
+    <!-- Tutorial -->
+    <string name="tutorial_title">Learn to play</string>
+    <string name="tutorial_next">Next</string>
+    <string name="tutorial_back">Back</string>
+    <string name="tutorial_finish">Finish!</string>
+
+    <!-- General -->
+    <string name="ok">Accept</string>
+    <string name="cancel">Cancel</string>
+    <string name="back">Back</string>
+    <string name="loading">Loading...</string>
+    <string name="play">Play!</string>
+
+    <!-- Arcade -->
+    <string name="arcade_title">Arcade Mode</string>
+    <string name="arcade_subtitle">Beat all rivals</string>
+    <string name="rival_1_name">Manchita</string>
+    <string name="rival_2_name">Alejandra</string>
+    <string name="rival_3_name">Laurita</string>
+    <string name="rival_4_name">Maca</string>
+    <string name="rival_5_name">Cristian</string>
+    <string name="rival_6_name">Lop585</string>
+    <string name="rival_7_name">Marsan</string>
+
+    <!-- Recordings -->
+    <string name="recordings_title">Recorded games</string>
+    <string name="recordings_empty">No recorded games yet</string>
+    <string name="recordings_delete_all">Delete all</string>
+    <string name="recordings_delete_confirm">Delete all recorded games?</string>
+    <string name="recordings_delete_yes">Yes, delete</string>
+    <string name="recordings_count">%d recorded games</string>
+    <string name="recordings_moves">%d moves</string>
+    <string name="recordings_result_win">Win</string>
+    <string name="recordings_result_loss">Loss</string>
+    <string name="recordings_result_draw">Draw</string>
+    <string name="recordings_result_resign">Resigned</string>
+    <string name="recordings_result_ongoing">Incomplete</string>
+    <string name="recordings_mode_normal">vs CPU</string>
+    <string name="recordings_mode_timed">vs CPU (timed)</string>
+    <string name="recordings_mode_two">2 Players</string>
+
+    <!-- Replay -->
+    <string name="replay_title">Replay</string>
+    <string name="replay_move_initial">Initial position</string>
+    <string name="replay_analyzing">Analyzing position...</string>
+    <string name="replay_no_stockfish">Stockfish not available for analysis</string>
+
+    <!-- GameRecordingsActivity - delete dialogs -->
+    <string name="recordings_delete_one_title">Delete game</string>
+    <string name="recordings_delete_one_msg">Delete this recorded game?</string>
+    <string name="recordings_delete_one_yes">Yes, delete</string>
+    <string name="recordings_select_mode_title">Select games</string>
+    <string name="recordings_delete_selected">Delete selected</string>
+    <string name="recordings_selected_count">%d game(s) selected</string>
+
+</resources>

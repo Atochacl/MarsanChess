@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Reproducción y análisis de jugadas -->
+    <string name="color_white">White</string>
+    <string name="color_black">Black</string>
+    <string name="piece_king">the King</string>
+    <string name="piece_queen">the Queen</string>
+    <string name="piece_rook">the Rook</string>
+    <string name="piece_bishop">the Bishop</string>
+    <string name="piece_knight">the Knight</string>
+    <string name="piece_pawn">the Pawn</string>
+    <string name="piece_generic">the piece</string>
+    <string name="quality_excellent">Excellent</string>
+    <string name="quality_very_good">Very good</string>
+    <string name="quality_good">Good</string>
+    <string name="quality_acceptable">Acceptable</string>
+    <string name="quality_inaccuracy">Inaccuracy</string>
+    <string name="quality_bad">Bad</string>
+    <string name="quality_blunder">Blunder</string>
+    <string name="eval_mate_for">mate for</string>
+    <string name="eval_mate_against">mate against</string>
+    <string name="an_pawn_points">%1$.1f pawn points</string>
+    <string name="an_move_n">Move %1$d</string>
+    <string name="an_eval_label">Evaluation %1$s</string>
+    <string name="an_mate_in_short">(mate in %1$d)</string>
+    <string name="an_optimal_check">Optimal move ✓</string>
+    <string name="an_best_label">Best: %1$s</string>
+    <string name="an_another_move">another move</string>
+    <string name="an_another_line">another line</string>
+    <string name="an_another_piece">another piece</string>
+    <string name="an_develop_minor">developing a minor piece</string>
+    <string name="an_activate_king">activating the King</string>
+    <string name="an_rival_reply">by the opponent</string>
+    <string name="replay_no_moves">Game with no recorded moves</string>
+    <string name="replay_move_label">Move %1$d / %2$d  -  Turn %3$d (%4$s)</string>
+    <string name="replay_initial_pos">Initial position - make a move to analyze.</string>
+    <string name="replay_analysis_error">Analysis error: %1$s</string>
+    <string name="replay_btn_auto">▶▶  Auto</string>
+    <string name="replay_btn_analyze">🔍 Analyze</string>
+    <string name="an_allows_mate">Decisive blunder: after this move, %1$s has forced mate in %2$d. Before moving, always check which checks and captures your move allows.</string>
+    <string name="an_missed_mate">%1$s had forced mate in %2$d and let it slip! The winning line started with %3$s. When your opponent\'s king is exposed, look for checking sequences first.</string>
+    <string name="an_hangs_piece">This move leaves %1$s undefended on %2$s: %3$s\'s best reply is to capture it outright. Before moving a piece, check who defends it on its destination square.</string>
+    <string name="an_optimal_mate">Optimal move: %1$s keeps the forced mate in %2$d. Stay on the sequence.</string>
+    <string name="an_advantage_flipped">The advantage changed hands with this move: %1$s was better (%2$s) and now %3$s is in charge (%4$s for %1$s).</string>
+    <string name="an_flip_capture">The capture looked natural, but the opponent\'s in-between reply refutes it.</string>
+    <string name="an_flip_reply">The opponent\'s best reply was missed: %1$s.</string>
+    <string name="an_advantage_drained">%1$s had a clear advantage (%2$s) and this move lets it slip: the position is balanced again. When ahead, look for moves that keep the pressure — %3$s was stronger here.</string>
+    <string name="an_promo_good">Promotion! Correct piece choice: it brings the win closer.</string>
+    <string name="an_promo_bad">Pawn promoted, but careful: there was a stronger promotion or preparation here.</string>
+    <string name="an_capture_bad">Problematic capture: the material gained doesn\'t make up for what comes next. The reply %1$s leaves %2$s better.</string>
+    <string name="an_opening_bad">Weak opening move (loses %1$s). In this phase prioritize central pawns, developing Knights and Bishops, and castling early. %2$s was better here.</string>
+    <string name="an_opening_mid">Playable but imprecise opening move: there is more active development with %1$s.</string>
+    <string name="an_endgame_bad">In the endgame every tempo is gold and this move gives up %1$s. The correct technique was %2$s.</string>
+    <string name="an_acceptable">Acceptable move, although Stockfish prefers %1$s (%2$s given up).</string>
+    <string name="an_inaccuracy">Inaccuracy with %1$s: %2$s handed to the opponent. %3$s was more testing.</string>
+    <string name="an_bad">Bad move: %1$s loses %2$s at once and %3$s takes the initiative.</string>
+    <string name="an_blunder">Serious blunder (%1$s lost). Check your opponent\'s threats — checks, captures and double attacks — before moving.</string>
+
+    <string-array name="an_optimal_pool">
+        <item>Optimal move: exactly Stockfish\'s first line in this position.</item>
+        <item>The best option available. There was nothing better on the board.</item>
+        <item>Engine move: maximum precision by %1$s.</item>
+    </string-array>
+    <string-array name="an_theory_pool">
+        <item>Theory move from the %1$s. %2$s follows an established line.</item>
+        <item>Known theory: this position appears in the %1$s. Good repertoire.</item>
+        <item>%2$s stays within the theory of the %1$s.</item>
+    </string-array>
+    <string-array name="an_castle_pool">
+        <item>Good moment to castle: it protects the King and connects the Rooks.</item>
+        <item>Timely castling. The King is safe before the game opens up.</item>
+    </string-array>
+    <string-array name="an_capture_good_pool">
+        <item>Precise capture with %1$s: it wins material or improves the structure.</item>
+        <item>Good exchange for %2$s at this point of the game.</item>
+    </string-array>
+    <string-array name="an_opening_good_pool">
+        <item>Correct development in the opening: %1$s is well placed.</item>
+        <item>Good opening move: it contributes to center control and development.</item>
+        <item>Solid opening by %2$s. It sets the stage for the middlegame.</item>
+    </string-array>
+    <string-array name="an_endgame_good_pool">
+        <item>Good endgame technique: %1$s stays active.</item>
+        <item>Precise endgame move: it brings the conversion closer.</item>
+    </string-array>
+    <string-array name="an_good_pool">
+        <item>Very good move: %1$s keeps control (%2$s).</item>
+        <item>Solid move with %3$s. The evaluation barely changes.</item>
+    </string-array>
+
+    <!-- Opening names -->
+    <string name="op_kings_pawn">King\'s Pawn Opening</string>
+    <string name="op_open_game">Open Game (1...e5)</string>
+    <string name="op_kings_knight">King\'s Knight Opening</string>
+    <string name="op_italian_spanish">Italian / Spanish Opening</string>
+    <string name="op_italian">Italian Game (Giuoco Piano)</string>
+    <string name="op_ruy_lopez">Spanish Opening (Ruy López)</string>
+    <string name="op_kings_gambit">King\'s Gambit</string>
+    <string name="op_kings_gambit_acc">King\'s Gambit Accepted</string>
+    <string name="op_kings_gambit_dec">King\'s Gambit Declined (Falkbeer Defense)</string>
+    <string name="op_petrov">Petrov Defense</string>
+    <string name="op_latvian">Latvian Gambit</string>
+    <string name="op_sicilian">Sicilian Defense</string>
+    <string name="op_sicilian_najdorf">Sicilian - Najdorf Variation</string>
+    <string name="op_sicilian_classical">Sicilian - Classical Variation</string>
+    <string name="op_sicilian_scheveningen">Sicilian - Scheveningen Variation</string>
+    <string name="op_french">French Defense</string>
+    <string name="op_french_main">French Defense - Main Line</string>
+    <string name="op_french_winawer">French Defense - Winawer Variation</string>
+    <string name="op_caro_kann">Caro-Kann Defense</string>
+    <string name="op_caro_kann_main">Caro-Kann - Main Line</string>
+    <string name="op_scandinavian">Scandinavian Defense (Center Counter)</string>
+    <string name="op_scandinavian_acc">Scandinavian Accepted</string>
+    <string name="op_pirc">Pirc Defense</string>
+    <string name="op_modern">Modern Defense</string>
+    <string name="op_pirc_classical">Pirc Defense - Classical Variation</string>
+    <string name="op_queens_pawn">Queen\'s Pawn Opening</string>
+    <string name="op_queens_game">Queen\'s Pawn Game</string>
+    <string name="op_queens_gambit">Queen\'s Gambit</string>
+    <string name="op_qga">Queen\'s Gambit Accepted</string>
+    <string name="op_qgd">Queen\'s Gambit Declined</string>
+    <string name="op_slav">Slav Defense</string>
+    <string name="op_indian">Indian Defense</string>
+    <string name="op_kings_indian">King\'s Indian Defense</string>
+    <string name="op_grunfeld">Grünfeld Defense</string>
+    <string name="op_nimzo_queens">Nimzo-Indian / Queen\'s Indian Defense</string>
+    <string name="op_nimzo">Nimzo-Indian Defense</string>
+    <string name="op_queens_indian">Queen\'s Indian Defense</string>
+    <string name="op_kings_indian_classical">King\'s Indian Defense (Classical)</string>
+    <string name="op_english">English Opening</string>
+    <string name="op_english_rev">English - Reversed Sicilian</string>
+    <string name="op_english_sym">English - Symmetrical Variation</string>
+    <string name="op_reti">Réti Opening</string>
+    <string name="op_reti_main">Réti Opening - Main Line</string>
+    <string name="op_benko">Benko Opening</string>
+    <string name="op_larsen">Larsen Opening</string>
+    <string name="op_bird">Bird Opening</string>
+</resources>

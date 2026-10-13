@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Tema principal -->
+    <!-- ── TEMA PRINCIPAL ── -->
     <style name="Theme.MarsanChess" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/accent</item>
         <item name="colorPrimaryVariant">@color/text_secondary</item>
@@ -24,14 +24,15 @@
         <item name="windowNoTitle">true</item>
     </style>
 
-    <!-- Splash Screen -->
-    <style name="Theme.MarsanChess.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/background_primary</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <item name="postSplashScreenTheme">@style/Theme.MarsanChess</item>
+    <!-- ── SPLASH (pantalla completa sin barras) ── -->
+    <style name="Theme.MarsanChess.Splash" parent="Theme.MarsanChess">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
-    <!-- Botón primario -->
+    <!-- ── BOTÓN PRIMARIO ── -->
     <style name="Widget.MarsanChess.Button.Primary" parent="Widget.MaterialComponents.Button">
         <item name="backgroundTint">@color/button_primary_bg</item>
         <item name="android:textColor">@color/button_primary_text</item>
@@ -44,7 +45,7 @@
         <item name="android:stateListAnimator">@null</item>
     </style>
 
-    <!-- Botón secundario -->
+    <!-- ── BOTÓN SECUNDARIO ── -->
     <style name="Widget.MarsanChess.Button.Secondary" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="strokeColor">@color/button_secondary_border</item>
         <item name="strokeWidth">1.5dp</item>
@@ -57,7 +58,7 @@
         <item name="android:stateListAnimator">@null</item>
     </style>
 
-    <!-- Tarjeta -->
+    <!-- ── TARJETA ── -->
     <style name="Widget.MarsanChess.Card" parent="Widget.MaterialComponents.CardView">
         <item name="cardBackgroundColor">@color/background_card</item>
         <item name="cardElevation">0dp</item>
@@ -66,35 +67,7 @@
         <item name="cardCornerRadius">12dp</item>
     </style>
 
-    <!-- Textos — con parent para que sean válidos -->
-    <style name="TextAppearance.MarsanChess.Title" parent="TextAppearance.MaterialComponents.Headline5">
-        <item name="android:textSize">24sp</item>
-        <item name="android:textColor">@color/text_primary</item>
-        <item name="android:letterSpacing">-0.01</item>
-    </style>
-
-    <style name="TextAppearance.MarsanChess.Subtitle" parent="TextAppearance.MaterialComponents.Subtitle1">
-        <item name="android:textSize">14sp</item>
-        <item name="android:textColor">@color/text_secondary</item>
-    </style>
-
-    <style name="TextAppearance.MarsanChess.Body" parent="TextAppearance.MaterialComponents.Body1">
-        <item name="android:textSize">14sp</item>
-        <item name="android:textColor">@color/text_primary</item>
-    </style>
-
-    <style name="TextAppearance.MarsanChess.Caption" parent="TextAppearance.MaterialComponents.Caption">
-        <item name="android:textSize">12sp</item>
-        <item name="android:textColor">@color/text_hint</item>
-    </style>
-
-    <style name="TextAppearance.MarsanChess.Score" parent="TextAppearance.MaterialComponents.Headline4">
-        <item name="android:textSize">28sp</item>
-        <item name="android:textColor">@color/text_primary</item>
-        <item name="android:fontFamily">monospace</item>
-    </style>
-
-    <!-- Campo de texto -->
+    <!-- ── CAMPO DE TEXTO ── -->
     <style name="Widget.MarsanChess.TextInput" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
         <item name="boxStrokeColor">@color/accent</item>
         <item name="boxBackgroundColor">@color/background_card</item>
@@ -104,16 +77,6 @@
         <item name="boxCornerRadiusTopEnd">10dp</item>
         <item name="boxCornerRadiusBottomStart">10dp</item>
         <item name="boxCornerRadiusBottomEnd">10dp</item>
-    </style>
-
-    <!-- Chip de dificultad -->
-    <style name="Widget.MarsanChess.DifficultyChip" parent="Widget.MaterialComponents.Chip.Choice">
-        <item name="chipBackgroundColor">@color/background_card</item>
-        <item name="chipStrokeColor">@color/border</item>
-        <item name="chipStrokeWidth">1dp</item>
-        <item name="android:textColor">@color/text_secondary</item>
-        <item name="chipCornerRadius">8dp</item>
-        <item name="chipMinHeight">40dp</item>
     </style>
 
 </resources>

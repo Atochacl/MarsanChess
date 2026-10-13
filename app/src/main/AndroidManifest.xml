@@ -10,32 +10,75 @@
         android:theme="@style/Theme.MarsanChess"
         android:networkSecurityConfig="@xml/network_security_config">
 
+        <!-- Entrada: splash screen -->
         <activity
-            android:name=".ui.main.MainActivity"
+            android:name=".ui.main.SplashActivity"
             android:exported="true"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.MarsanChess.Splash"
-            android:windowSoftInputMode="adjustResize">
+            android:theme="@style/Theme.MarsanChess.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
 
-        <activity android:name=".ui.game.GameActivity"
-            android:exported="false" android:screenOrientation="portrait"/>
-        <activity android:name=".ui.game.ResultActivity"
-            android:exported="false" android:screenOrientation="portrait"/>
-        <activity android:name=".ui.stats.StatsActivity"
-            android:exported="false" android:screenOrientation="portrait"/>
-        <activity android:name=".ui.prefs.PreferencesActivity"
-            android:exported="false" android:screenOrientation="portrait"/>
-        <activity android:name=".ui.tutorial.TutorialActivity"
-            android:exported="false" android:screenOrientation="portrait"/>
-        <activity android:name=".ui.arcade.ArcadeActivity"
-            android:exported="false" android:screenOrientation="portrait"/>
-        <activity android:name=".ui.ranking.RankingActivity"
-            android:exported="false" android:screenOrientation="portrait"/>
+        <!-- Selector de idioma (primera vez o desde preferencias) -->
+        <activity
+            android:name=".ui.main.LanguageSelectActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MarsanChess.Splash"/>
+
+        <!-- Menú principal -->
+        <activity
+            android:name=".ui.main.MainActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize"/>
+
+        <!-- Juego -->
+        <activity
+            android:name=".ui.game.GameActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"/>
+
+        <!-- Historial -->
+        <activity
+            android:name=".ui.stats.StatsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"/>
+
+        <!-- Preferencias -->
+        <activity
+            android:name=".ui.prefs.PreferencesActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"/>
+
+        <!-- Partidas grabadas -->
+        <activity
+            android:name=".ui.replay.GameRecordingsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"/>
+
+        <!-- Reproducción de partida -->
+        <activity
+            android:name=".ui.replay.GameReplayActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"/>
+
+        <!-- Stubs — funcionalidad futura -->
+        <activity
+            android:name=".ui.tutorial.TutorialActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".ui.arcade.ArcadeActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"/>
+        <activity
+            android:name=".ui.ranking.RankingActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"/>
 
     </application>
 

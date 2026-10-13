@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Espaciado general -->
+    <!-- ── ESPACIADO GENERAL ── -->
     <dimen name="spacing_xs">4dp</dimen>
     <dimen name="spacing_sm">8dp</dimen>
     <dimen name="spacing_md">16dp</dimen>
@@ -9,62 +9,31 @@
     <dimen name="spacing_xl">32dp</dimen>
     <dimen name="spacing_xxl">48dp</dimen>
 
-    <!-- Padding de pantallas -->
+    <!-- ── PANTALLAS ── -->
     <dimen name="screen_padding">20dp</dimen>
 
-    <!-- Tarjetas -->
+    <!-- ── TARJETAS ── -->
     <dimen name="card_corner_radius">12dp</dimen>
     <dimen name="card_padding">16dp</dimen>
     <dimen name="card_stroke">0.5dp</dimen>
 
-    <!-- Botones -->
+    <!-- ── BOTONES ── -->
     <dimen name="button_corner_radius">10dp</dimen>
     <dimen name="button_height">50dp</dimen>
     <dimen name="button_margin">8dp</dimen>
 
-    <!-- Tablero -->
+    <!-- ── TABLERO ── -->
     <dimen name="board_margin">12dp</dimen>
     <dimen name="board_border">1.5dp</dimen>
-    <dimen name="board_label_size">10sp</dimen>
 
-    <!-- Piezas -->
-    <dimen name="piece_text_size_small">18sp</dimen>
-    <dimen name="piece_text_size_normal">22sp</dimen>
-    <dimen name="piece_text_size_large">26sp</dimen>
-
-    <!-- Reloj -->
-    <dimen name="clock_height">56dp</dimen>
-    <dimen name="clock_text_size">20sp</dimen>
-    <dimen name="clock_corner_radius">8dp</dimen>
-
-    <!-- Texto -->
+    <!-- ── TEXTO ── -->
     <dimen name="text_title">24sp</dimen>
     <dimen name="text_subtitle">16sp</dimen>
     <dimen name="text_body">14sp</dimen>
     <dimen name="text_caption">12sp</dimen>
     <dimen name="text_small">11sp</dimen>
 
-    <!-- Avatar rival arcade -->
-    <dimen name="rival_avatar_size">48dp</dimen>
-    <dimen name="rival_avatar_corner">10dp</dimen>
-    <dimen name="rival_emoji_size">24sp</dimen>
-
-    <!-- Dificultad chips -->
-    <dimen name="difficulty_chip_size">40dp</dimen>
-    <dimen name="difficulty_chip_corner">8dp</dimen>
-
-    <!-- Tutorial -->
-    <dimen name="manchita_size">80dp</dimen>
-    <dimen name="tutorial_bubble_corner">16dp</dimen>
-    <dimen name="tutorial_bubble_padding">14dp</dimen>
-    <dimen name="tutorial_progress_height">4dp</dimen>
-
-    <!-- Ranking -->
-    <dimen name="ranking_position_size">20sp</dimen>
-    <dimen name="ranking_name_size">15sp</dimen>
-    <dimen name="ranking_points_size">16sp</dimen>
-
-    <!-- Elevación -->
+    <!-- ── ELEVACIÓN ── -->
     <dimen name="elevation_none">0dp</dimen>
     <dimen name="elevation_card">2dp</dimen>
 

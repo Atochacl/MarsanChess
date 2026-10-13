@@ -4,94 +4,118 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background_primary"
-    android:paddingHorizontal="@dimen/screen_padding">
+    android:fitsSystemWindows="true"
+    android:background="@color/background_primary">
 
+    <!-- ── TÍTULO: logo + nombre + tagline ── -->
     <LinearLayout
         android:id="@+id/layoutTitle"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        android:paddingHorizontal="40dp"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/layoutButtons"
+        app:layout_constraintBottom_toTopOf="@id/layoutCenter"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintVertical_chainStyle="packed"
-        app:layout_constraintVertical_bias="0.35">
+        app:layout_constraintVertical_bias="0.40">
+
+        <ImageView
+            android:id="@+id/tvAppIcon"
+            android:layout_width="169dp"
+            android:layout_height="169dp"
+            android:src="@drawable/logo_marsan"
+            android:scaleType="fitCenter"
+            android:adjustViewBounds="true"
+            android:contentDescription="@string/app_name"
+            android:layout_marginBottom="12dp"/>
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="♚"
-            android:textSize="64sp"
-            android:textColor="@color/text_primary"/>
-        <TextView
+            android:id="@+id/tvAppName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/app_name"
-            android:textSize="26sp"
+            android:textSize="30sp"
+            android:textStyle="bold"
             android:textColor="@color/text_primary"
-            android:layout_marginTop="8dp"/>
+            android:layout_marginBottom="6dp"/>
+
         <TextView
+            android:id="@+id/tvTagline"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/app_tagline"
             android:textSize="13sp"
-            android:textColor="@color/text_hint"
-            android:layout_marginTop="4dp"/>
+            android:textColor="@color/text_secondary"/>
+
     </LinearLayout>
 
+    <!-- ── BOTÓN JUGAR ── -->
     <LinearLayout
-        android:id="@+id/layoutButtons"
+        android:id="@+id/layoutCenter"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:gravity="center"
+        android:paddingHorizontal="32dp"
+        app:layout_constraintTop_toBottomOf="@id/layoutTitle"
+        app:layout_constraintBottom_toTopOf="@id/layoutBottom"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/layoutSecondary"
-        app:layout_constraintTop_toBottomOf="@id/layoutTitle">
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <com.google.android.material.button.MaterialButton
+        <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btnNewGame"
-            style="@style/Widget.MarsanChess.Button.Primary"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:paddingVertical="16dp"
+            android:layout_height="56dp"
             android:text="@string/menu_new_game"
-            android:layout_marginBottom="@dimen/spacing_sm"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnStats"
-            style="@style/Widget.MarsanChess.Button.Secondary"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="52dp"
-            android:paddingVertical="14dp"
-            android:text="@string/menu_stats"
-            android:layout_marginBottom="@dimen/spacing_sm"/>
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.04"
+            android:backgroundTint="@null"
+            android:stateListAnimator="@null"
+            android:layout_marginTop="28dp"/>
 
     </LinearLayout>
 
+    <!-- ── BOTONES SECUNDARIOS ──
+         paddingBottom="0dp" aquí — el padding de seguridad se aplica
+         desde código en MainActivity usando ViewCompat.setOnApplyWindowInsetsListener
+         para que funcione en todos los modelos incluyendo los que tienen
+         barra de navegación por gestos o botones en pantalla -->
     <LinearLayout
-        android:id="@+id/layoutSecondary"
+        android:id="@+id/layoutBottom"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_marginBottom="@dimen/spacing_lg"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:gravity="center"
+        android:paddingHorizontal="32dp"
+        android:paddingBottom="24dp"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnPrefs"
-            style="@style/Widget.MarsanChess.Button.Secondary"
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnStats"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="46dp"
-            android:paddingVertical="11dp"
-            android:text="@string/menu_prefs"/>
+            android:layout_height="52dp"
+            android:text="@string/menu_stats"
+            android:textSize="14sp"
+            android:letterSpacing="0.04"
+            android:backgroundTint="@null"
+            android:stateListAnimator="@null"
+            android:layout_marginBottom="10dp"/>
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnPrefs"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="@string/menu_prefs"
+            android:textSize="14sp"
+            android:letterSpacing="0.04"
+            android:backgroundTint="@null"
+            android:stateListAnimator="@null"/>
 
     </LinearLayout>
 

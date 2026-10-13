@@ -1,16 +1,9 @@
 package com.marsan.chess.ui.arcade
 
-import android.content.Context
-import android.content.Intent
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
+import com.marsan.chess.ui.BaseActivity
 
-class ArcadeActivity : AppCompatActivity() {
-    companion object {
-        fun start(context: Context, playerName: String) {
-            // Arcade eliminado
-        }
-    }
+class ArcadeActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         finish()

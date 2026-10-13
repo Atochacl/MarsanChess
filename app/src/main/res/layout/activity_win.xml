@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootWin"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_primary"
+    android:paddingHorizontal="@dimen/screen_padding">
+
+    <!-- Trofeo animado -->
+    <TextView
+        android:id="@+id/tvWinIcon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🏆"
+        android:textSize="80sp"
+        app:layout_constraintBottom_toTopOf="@id/tvWinTitle"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintVertical_bias="0.32"/>
+
+    <TextView
+        android:id="@+id/tvWinTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="¡Ganaste!"
+        android:textSize="36sp"
+        android:textColor="@color/text_primary"
+        android:layout_marginTop="12dp"
+        app:layout_constraintBottom_toTopOf="@id/tvWinSubtitle"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvWinIcon"/>
+
+    <TextView
+        android:id="@+id/tvWinSubtitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Esta victoria ha sido registrada en tu historial."
+        android:textSize="15sp"
+        android:textColor="@color/text_secondary"
+        android:gravity="center"
+        android:lineSpacingMultiplier="1.4"
+        android:layout_marginTop="10dp"
+        app:layout_constraintBottom_toTopOf="@id/cardWinStats"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvWinTitle"/>
+
+    <!-- Tarjeta de stats: dificultad + tiempo -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardWinStats"
+        style="@style/Widget.MarsanChess.Card"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_lg"
+        app:layout_constraintBottom_toTopOf="@id/tvWinPoints"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvWinSubtitle">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="@dimen/card_padding">
+
+            <!-- Dificultad -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+                <TextView
+                    android:id="@+id/tvWinDifficulty"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Intermedio"
+                    android:textSize="18sp"
+                    android:textColor="@color/text_primary"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Dificultad"
+                    android:textSize="11sp"
+                    android:textColor="@color/text_hint"/>
+            </LinearLayout>
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="match_parent"
+                android:background="@color/border"/>
+
+            <!-- Tiempo del jugador -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+                <TextView
+                    android:id="@+id/tvWinTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="00:00"
+                    android:textSize="18sp"
+                    android:textColor="@color/text_primary"
+                    android:fontFamily="monospace"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tu tiempo"
+                    android:textSize="11sp"
+                    android:textColor="@color/text_hint"/>
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Puntos ganados -->
+    <TextView
+        android:id="@+id/tvWinPoints"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="20sp"
+        android:textColor="@color/text_secondary"
+        android:layout_marginTop="@dimen/spacing_md"
+        app:layout_constraintBottom_toTopOf="@id/btnWinAccept"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cardWinStats"/>
+
+    <!-- Botón aceptar -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnWinAccept"
+        style="@style/Widget.MarsanChess.Button.Primary"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:minHeight="56dp"
+        android:paddingVertical="16dp"
+        android:text="Aceptar"
+        android:layout_marginTop="@dimen/spacing_lg"
+        app:layout_constraintBottom_toTopOf="@id/btnWinPlayAgain"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvWinPoints"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnWinPlayAgain"
+        style="@style/Widget.MarsanChess.Button.Secondary"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:minHeight="50dp"
+        android:paddingVertical="14dp"
+        android:text="Jugar de nuevo"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:layout_marginBottom="@dimen/spacing_xl"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btnWinAccept"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,5 +1,26 @@
-# Project exclude paths
-/.gradle/
-/app/build/
-/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/
-/build/
+# Gradle / build
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+
+# Archivos locales (NO subir)
+local.properties
+*.jks
+*.keystore
+keystore.properties
+
+# Android Studio
+.idea/caches/
+.idea/workspace.xml
+.idea/shelf/
+.idea/deploymentTargetSelector.xml
+.idea/deviceManager.xml
+*.iml
+.externalNativeBuild/
+.cxx/
+
+# SO
+.DS_Store
+Thumbs.db

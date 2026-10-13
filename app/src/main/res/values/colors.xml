@@ -1,112 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- ===================== PALETA PRINCIPAL ===================== -->
-    <!-- Fondo general de la app -->
+    <!-- ── FONDO GENERAL ── -->
     <color name="background_primary">#F5F5F5</color>
-    <!-- Fondo de tarjetas y superficies elevadas -->
     <color name="background_card">#FFFFFF</color>
-    <!-- Color principal (botones, acento, texto destacado) -->
+
+    <!-- ── ACENTO Y TEXTO ── -->
     <color name="accent">#111111</color>
-    <!-- Texto principal -->
     <color name="text_primary">#111111</color>
-    <!-- Texto secundario / subtítulos -->
     <color name="text_secondary">#555555</color>
-    <!-- Texto terciario / hints -->
     <color name="text_hint">#888888</color>
-    <!-- Bordes y divisores -->
     <color name="border">#D0D0D0</color>
 
-    <!-- ===================== TABLERO ===================== -->
-    <!-- Casilla clara -->
+    <!-- ── TABLERO ── -->
     <color name="board_light">#FFFFFF</color>
-    <!-- Casilla oscura -->
     <color name="board_dark">#111111</color>
-    <!-- Casilla seleccionada (pieza tocada) -->
     <color name="board_selected">#E0E0E0</color>
-    <!-- Movimiento posible -->
     <color name="board_hint">#CCCCCC</color>
-    <!-- Casilla en jaque -->
     <color name="board_check">#E04040</color>
-    <!-- Último movimiento realizado -->
     <color name="board_last_move">#BBBBBB</color>
 
-    <!-- ===================== PIEZAS ===================== -->
-    <!-- Piezas negras -->
-    <color name="piece_dark">#111111</color>
-    <!-- Piezas blancas -->
-    <color name="piece_light">#FFFFFF</color>
-    <!-- Sombra de pieza -->
-    <color name="piece_shadow">#33000000</color>
-
-    <!-- ===================== BOTONES ===================== -->
-    <!-- Botón primario fondo -->
+    <!-- ── BOTONES ── -->
     <color name="button_primary_bg">#111111</color>
-    <!-- Botón primario texto -->
     <color name="button_primary_text">#FFFFFF</color>
-    <!-- Botón secundario (ghost) borde -->
     <color name="button_secondary_border">#111111</color>
-    <!-- Botón secundario texto -->
     <color name="button_secondary_text">#111111</color>
-    <!-- Botón deshabilitado -->
     <color name="button_disabled">#AAAAAA</color>
 
-    <!-- ===================== ESTADÍSTICAS ===================== -->
-    <!-- Victorias -->
+    <!-- ── ESTADÍSTICAS ── -->
     <color name="stat_win">#111111</color>
-    <!-- Derrotas -->
     <color name="stat_loss">#888888</color>
-    <!-- Tablas -->
     <color name="stat_draw">#AAAAAA</color>
 
-    <!-- ===================== RANKING ===================== -->
-    <!-- Oro — 1er lugar -->
+    <!-- ── RANKING ── -->
     <color name="rank_gold">#C8A400</color>
-    <!-- Plata — 2do lugar -->
     <color name="rank_silver">#888888</color>
-    <!-- Bronce — 3er lugar -->
     <color name="rank_bronze">#8B5E3C</color>
-    <!-- Resto del ranking -->
     <color name="rank_normal">#444444</color>
 
-    <!-- ===================== ARCADE ===================== -->
-    <!-- Rival desbloqueado -->
-    <color name="arcade_unlocked">#111111</color>
-    <!-- Rival bloqueado -->
-    <color name="arcade_locked">#CCCCCC</color>
-    <!-- Rival vencido -->
-    <color name="arcade_beaten">#555555</color>
-    <!-- Barra de progreso arcade -->
-    <color name="arcade_progress">#111111</color>
-    <!-- Jefe final -->
-    <color name="arcade_boss">#111111</color>
-
-    <!-- ===================== TUTORIAL ===================== -->
-    <!-- Barra de progreso tutorial -->
-    <color name="tutorial_progress">#111111</color>
-    <!-- Fondo burbuja de diálogo Manchita -->
-    <color name="tutorial_bubble_bg">#FFFFFF</color>
-    <!-- Borde burbuja de diálogo -->
-    <color name="tutorial_bubble_border">#D0D0D0</color>
-    <!-- Fondo correcto -->
-    <color name="tutorial_correct_bg">#F0FFF4</color>
-    <!-- Fondo error -->
-    <color name="tutorial_error_bg">#FFF5F5</color>
-
-    <!-- ===================== RELOJ ===================== -->
-    <!-- Reloj jugador activo -->
-    <color name="clock_active">#111111</color>
-    <!-- Reloj jugador en espera -->
-    <color name="clock_idle">#AAAAAA</color>
-    <!-- Fondo reloj activo -->
-    <color name="clock_active_bg">#111111</color>
-    <!-- Fondo reloj inactivo -->
-    <color name="clock_idle_bg">#E0E0E0</color>
-
-    <!-- ===================== SISTEMA ===================== -->
+    <!-- ── SISTEMA ── -->
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
     <color name="transparent">#00000000</color>
     <color name="overlay">#80000000</color>
+
+    <!-- ── LAUNCHER ICON ── -->
+    <color name="ic_launcher_background">#F5F5F5</color>
 
 </resources>
