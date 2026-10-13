@@ -150,9 +150,23 @@ class StockfishEngine(private val context: Context) {
         // nivel de dificultad con el que se jugó la partida.
         send("setoption name UCI_LimitStrength value false")
         send("setoption name Skill Level value 20")
+        // UN solo hilo: con varios hilos Stockfish no es determinista y la
+        // misma jugada podía recibir notas distintas en cada análisis.
+        send("setoption name Threads value 1")
         send("ucinewgame")
         send("isready")
         waitFor("readyok", 3000)
+    }
+
+    /**
+     * Borra la tabla hash. Antes de analizar cada jugada se llama a esto
+     * para que el resultado no dependa de qué jugadas se analizaron
+     * antes ni en qué orden.
+     */
+    suspend fun clearHash() = withContext(Dispatchers.IO) {
+        if (!isReady) return@withContext
+        send("ucinewgame")
+        sync()
     }
 
     /**
@@ -171,7 +185,8 @@ class StockfishEngine(private val context: Context) {
         depth:       Int,
         multiPv:     Int = 1,
         searchMoves: List<String> = emptyList(),
-        maxTimeMs:   Long = 4000L
+        maxTimeMs:   Long = 4000L,
+        maxNodes:    Long = 0L
     ): List<EngineLine> = withContext(Dispatchers.IO) {
         if (!isReady) return@withContext emptyList()
         try {
@@ -183,14 +198,19 @@ class StockfishEngine(private val context: Context) {
             send("setoption name MultiPV value ${multiPv.coerceIn(1, 5)}")
             send("position fen $fen")
             val goCmd = buildString {
-                append("go depth $depth movetime $maxTimeMs")
+                // Con un límite de nodos (en vez de tiempo) el resultado es
+                // el mismo en cualquier teléfono y en cada repetición.
+                if (maxNodes > 0) append("go depth $depth nodes $maxNodes")
+                else append("go depth $depth movetime $maxTimeMs")
                 if (searchMoves.isNotEmpty()) append(" searchmoves ").append(searchMoves.joinToString(" "))
             }
             send(goCmd)
 
             val byPv = sortedMapOf<Int, EngineLine>()
             var gotBestMove = false
-            val deadline = System.currentTimeMillis() + maxTimeMs + 3000L
+            // Margen de seguridad por si el teléfono es muy lento
+            val deadline = System.currentTimeMillis() + maxTimeMs + 3000L +
+                (if (maxNodes > 0) 8000L else 0L)
 
             loop@ while (System.currentTimeMillis() < deadline) {
                 if (reader?.ready() == true) {

@@ -338,16 +338,21 @@ object MoveReviewer {
     ): MoveReview? {
         val fen   = FenConverter.toFen(boardBefore, moveNumber)
         val uci   = UciMoves.toUci(played)
-        val lines = sf.analyzeLines(fen, depth, multiPv = 2, maxTimeMs = maxTimeMs)
+        // Hash limpio + un hilo + límite de nodos = análisis determinista:
+        // la misma jugada recibe siempre la misma nota, en cualquier
+        // idioma, teléfono u orden de análisis.
+        sf.clearHash()
+        val lines = sf.analyzeLines(fen, depth, multiPv = 2, maxTimeMs = maxTimeMs, maxNodes = ANALYSIS_NODES)
         if (lines.isEmpty()) return null
         val playedLine = if (lines.any { it.pv.firstOrNull() == uci }) null
             else sf.analyzeLines(fen, depth, multiPv = 1, searchMoves = listOf(uci),
-                                 maxTimeMs = maxTimeMs).firstOrNull()
+                                 maxTimeMs = maxTimeMs, maxNodes = ANALYSIS_NODES).firstOrNull()
         return review(boardBefore, played, moveNumber, lines, playedLine, isBook, previous)
     }
 
     const val ANALYSIS_DEPTH   = 16
     const val ANALYSIS_TIME_MS = 3500L
+    const val ANALYSIS_NODES   = 1_500_000L
 
     // ── Material ──────────────────────────────────────────────────────
 
