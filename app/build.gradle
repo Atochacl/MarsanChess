@@ -5,21 +5,46 @@ plugins {
     id 'com.google.devtools.ksp'
 }
 
+// ── FIRMA DE RELEASE ─────────────────────────────────────────────────
+// Los datos de la llave van en keystore.properties (en la raíz, NUNCA
+// en el repo: está en .gitignore). Sin ese archivo el release se
+// compila sin firmar. Ver docs/PUBLICAR_EN_PLAY.md.
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
 android {
     namespace 'com.marsan.chess'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.marsan.chess"
         minSdk 26
-        targetSdk 35
+        // Google Play exige API 36 (Android 16) para apps nuevas
+        targetSdk 36
         versionCode 1
         versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile     file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias      keystoreProperties['keyAlias']
+                keyPassword   keystoreProperties['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -56,6 +81,11 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
     }
+}
+
+// Room exporta el esquema de la base de datos (necesario para migraciones)
+ksp {
+    arg('room.schemaLocation', "$projectDir/schemas")
 }
 
 dependencies {

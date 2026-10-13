@@ -15,6 +15,8 @@ data class GameState(
     val selectedSquare: IntPair?            = null,
     val legalMovesForSelected: List<Move>   = emptyList(),
     val lastMove: Move?                     = null,
+    // Tiempo consumido al cierre del último turno. El reloj en vivo
+    // (que cambia cada 10 ms) va aparte, en GameController.clock.
     val playerTimeMs: Long                  = 0L,
     val cpuTimeMs: Long                     = 0L,
     val playerTimeLimitMs: Long             = 0L,
@@ -30,6 +32,12 @@ data class GameState(
     val usingStockfish: Boolean             = false,
     val pendingPromotion: PendingPromotion? = null,
     val twoPlayerMode: Boolean              = false    // true → no CPU, ambos humanos
+)
+
+/** Reloj en vivo: tiempo consumido por cada lado, en ms. */
+data class ClockState(
+    val playerMs: Long = 0L,
+    val cpuMs: Long    = 0L
 )
 
 data class PendingPromotion(
@@ -54,19 +62,26 @@ class GameController(
     private val _state = MutableStateFlow(GameState())
     val state: StateFlow<GameState> = _state
 
-    // ── Timers ───────────────────────────────────────────────────────
-    private var playerTimerJob: Job? = null
-    private var cpuTimerJob:    Job? = null
+    // El reloj en vivo va en su propio flujo: así la pantalla solo
+    // actualiza los dos textos del reloj cada 10 ms, en vez de
+    // redibujar el tablero y las piezas capturadas.
+    private val _clock = MutableStateFlow(ClockState())
+    val clock: StateFlow<ClockState> = _clock
+
+    // ── Reloj ────────────────────────────────────────────────────────
+    private enum class Side { PLAYER, CPU }
+
+    private var activeSide: Side? = null
+    private var segmentStartMs    = 0L     // 0 = reloj detenido o en pausa
+    private var paused            = false
+    private var tickerJob: Job?   = null
+    private var cpuJob: Job?      = null
 
     // Acumuladores de tiempo consumido (ms)
     private var playerAccumMs = 0L
     private var cpuAccumMs    = 0L
 
-    // Marca de inicio del turno actual
-    private var turnStartMs = 0L
-
     private val limitMs: Long get() = timeLimitSeconds * 1000L
-    private var fullMoveNumber = 1
 
     // ===================== INICIO =====================
 
@@ -82,22 +97,72 @@ class GameController(
             cpuTimeLimitMs    = limitMs,
             twoPlayerMode     = twoPlayerMode
         )
+        initStockfish()
+        startTurn()
+    }
 
+    /**
+     * Retoma una partida en curso a partir de sus jugadas (UCI) y los
+     * tiempos consumidos. Se usa cuando Android recrea la pantalla de
+     * juego (por ejemplo, tras cerrar la app por falta de memoria).
+     */
+    fun restoreGame(uciMoves: List<String>, playerMs: Long, cpuMs: Long) {
+        var board  = Board().apply { setup() }
+        val boards = mutableListOf(board.copy())
+        val moves  = mutableListOf<Move>()
+        for (uci in uciMoves) {
+            val move = UciMoves.parseUciDirect(uci, board) ?: break
+            board = board.applyMove(move)
+            moves += move
+            boards += board.copy()
+        }
+        internalEngine.resetMoveCount()
+        playerAccumMs = playerMs
+        cpuAccumMs    = cpuMs
+
+        val toMove = board.currentTurn
+        val (byPlayer, byCpu) = recalculateCaptured(moves)
+        val status    = MoveGenerator.getGameStatus(board, toMove)
+        val (result, reason) = evaluateEnd(status, toMove, boards, moves)
+        _state.value = GameState(
+            board             = board,
+            status            = status,
+            currentTurn       = toMove,
+            lastMove          = moves.lastOrNull(),
+            moveHistory       = moves,
+            boardHistory      = boards,
+            capturedByPlayer  = byPlayer,
+            capturedByCpu     = byCpu,
+            checkAttackers    = attackersFor(status, board, toMove),
+            playerTimeMs      = playerMs,
+            cpuTimeMs         = cpuMs,
+            playerTimeLimitMs = limitMs,
+            cpuTimeLimitMs    = limitMs,
+            result            = result,
+            endReason         = reason,
+            twoPlayerMode     = twoPlayerMode
+        )
+        publishClock()
+        initStockfish()
+        if (result == GameResult.ONGOING) startTurn()
+    }
+
+    private fun initStockfish() {
+        if (stockfish == null) return
         scope.launch(Dispatchers.IO) {
-            stockfishReady = stockfish?.init() ?: false
+            stockfishReady = stockfish.init()
             if (stockfishReady) {
                 _state.value = _state.value.copy(usingStockfish = true)
                 android.util.Log.d("GameController", "Stockfish ready ✓")
             }
         }
+    }
 
-        if (twoPlayerMode) {
-            startPlayerTurn()   // en modo 2 jugadores, siempre inicia el turno humano (blancas)
-        } else if (playerColor == PieceColor.WHITE) {
-            startPlayerTurn()
-        } else {
-            startCpuTurn { makeCpuMove() }
-        }
+    /** Arranca el turno de quien mueve en la posición actual. */
+    private fun startTurn() {
+        val toMove = _state.value.board.currentTurn
+        if (twoPlayerMode || toMove == playerColor) startPlayerTurn()
+        else startCpuTurn()
     }
 
     // ===================== TOQUE DEL JUGADOR =====================
@@ -158,43 +223,47 @@ class GameController(
 
     // ===================== DESHACER =====================
 
+    /** Medias jugadas que retrocede "Deshacer": 1 en 2 Jugadores, 2 contra la CPU. */
+    val undoStep: Int get() = if (twoPlayerMode) 1 else 2
+
+    fun canUndo(s: GameState = _state.value): Boolean =
+        s.boardHistory.size > undoStep && s.result == GameResult.ONGOING &&
+                !s.isThinking && s.pendingPromotion == null
+
     fun undoMove() {
         val s = _state.value
-        if (s.isThinking || s.result != GameResult.ONGOING) return
-        if (s.pendingPromotion != null) return
-        val history = s.boardHistory
-        if (history.size < 3) return
+        if (!canUndo(s)) return
 
-        stopAllTimers()
-        val newHistory     = history.dropLast(2)
+        stopClock()
+        val newHistory     = s.boardHistory.dropLast(undoStep)
         val restoredBoard  = newHistory.last()
-        val newMoveHistory = s.moveHistory.dropLast(minOf(2, s.moveHistory.size))
+        val newMoveHistory = s.moveHistory.dropLast(minOf(undoStep, s.moveHistory.size))
         val (capturedPlayer, capturedCpu) = recalculateCaptured(newMoveHistory)
-        if (fullMoveNumber > 1) fullMoveNumber--
 
-        val status    = MoveGenerator.getGameStatus(restoredBoard, playerColor)
-        val attackers = if (status == GameStatus.CHECK || status == GameStatus.CHECKMATE)
-            findCheckAttackers(restoredBoard, playerColor) else emptyList()
+        // El estado (jaque) se calcula para quien mueve ahora, que en
+        // 2 Jugadores no siempre es el Jugador 1.
+        val toMove = restoredBoard.currentTurn
+        val status = MoveGenerator.getGameStatus(restoredBoard, toMove)
 
         _state.value = s.copy(
             board = restoredBoard, status = status,
-            currentTurn = if (twoPlayerMode) restoredBoard.currentTurn else playerColor,
+            currentTurn = toMove,
             selectedSquare = null, legalMovesForSelected = emptyList(),
             lastMove = newMoveHistory.lastOrNull(), moveHistory = newMoveHistory,
             boardHistory = newHistory, capturedByPlayer = capturedPlayer,
-            capturedByCpu = capturedCpu, checkAttackers = attackers,
-            result = GameResult.ONGOING, endReason = GameEndReason.ONGOING
+            capturedByCpu = capturedCpu, checkAttackers = attackersFor(status, restoredBoard, toMove),
+            result = GameResult.ONGOING, endReason = GameEndReason.ONGOING,
+            playerTimeMs = playerAccumMs, cpuTimeMs = cpuAccumMs
         )
         startPlayerTurn()
     }
 
     private fun recalculateCaptured(moves: List<Move>): Pair<List<Piece>, List<Piece>> {
-        val start    = Board().apply { setup() }
         val byPlayer = mutableListOf<Piece>()
         val byCpu    = mutableListOf<Piece>()
-        var b = start.copy()
+        var b = Board().apply { setup() }
         for (move in moves) {
-            val captured = b[move.toRow, move.toCol]
+            val captured = DrawRules.capturedPiece(b, move)
             val moving   = b[move.fromRow, move.fromCol]
             if (captured != null && moving != null) {
                 if (moving.color == playerColor) byPlayer.add(captured)
@@ -208,14 +277,13 @@ class GameController(
     // ===================== MOVIMIENTO JUGADOR =====================
 
     private fun applyPlayerMove(move: Move) {
-        val s          = _state.value
-        val elapsedMs  = stopPlayerTimer()
-        playerAccumMs += elapsedMs
+        stopClock()
+        val s = _state.value
 
         val movingColor = s.currentTurn   // en 2P puede ser WHITE o BLACK
         val nextColor   = movingColor.opponent()
 
-        val captured = s.board[move.toRow, move.toCol]
+        val captured = DrawRules.capturedPiece(s.board, move)
         val newBoard = s.board.applyMove(move)
         val history  = s.moveHistory + move
         val boards   = s.boardHistory + newBoard.copy()
@@ -227,51 +295,31 @@ class GameController(
         val capturedByCpu = if (captured != null && movingColor != playerColor)
             s.capturedByCpu + captured else s.capturedByCpu
 
-        val status   = MoveGenerator.getGameStatus(newBoard, nextColor)
-        // forPlayer=true si el resultado afecta al que ACABA de mover (nextColor es quien recibe)
-        val (result, reason) = resolveResultForColor(status, nextColor)
-        val attackers = if (status == GameStatus.CHECK || status == GameStatus.CHECKMATE)
-            findCheckAttackers(newBoard, nextColor) else emptyList()
+        val status = MoveGenerator.getGameStatus(newBoard, nextColor)
+        val (result, reason) = evaluateEnd(status, nextColor, boards, history)
 
         _state.value = s.copy(
             board = newBoard, status = status, currentTurn = nextColor,
             selectedSquare = null, legalMovesForSelected = emptyList(),
             lastMove = move, moveHistory = history, boardHistory = boards,
             capturedByPlayer = capturedByPlayer, capturedByCpu = capturedByCpu,
-            checkAttackers = attackers, result = result, endReason = reason,
-            playerTimeMs = playerAccumMs, pendingPromotion = null
+            checkAttackers = attackersFor(status, newBoard, nextColor),
+            result = result, endReason = reason,
+            playerTimeMs = playerAccumMs, cpuTimeMs = cpuAccumMs, pendingPromotion = null
         )
 
         if (result == GameResult.ONGOING) {
             if (twoPlayerMode) startPlayerTurn()
-            else startCpuTurn { makeCpuMove() }
+            else startCpuTurn()
         }
     }
 
     // ===================== TURNO CPU =====================
 
-    /**
-     * Inicia el timer de la CPU y luego ejecuta el bloque de juego.
-     * El timer corre mientras la CPU piensa, descontando de su tiempo.
-     */
-    private fun startCpuTurn(block: suspend () -> Unit) {
-        if (limitMs > 0L) {
-            turnStartMs = System.currentTimeMillis()
-            cpuTimerJob?.cancel()
-            cpuTimerJob = scope.launch {
-                while (true) {
-                    delay(10)   // actualizar cada 10ms → centésimas visibles en UI
-                    val elapsed = System.currentTimeMillis() - turnStartMs
-                    val totalMs = cpuAccumMs + elapsed
-                    _state.value = _state.value.copy(cpuTimeMs = totalMs)
-                    if (totalMs >= limitMs) {
-                        handleTimeout(playerRanOut = false)
-                        return@launch
-                    }
-                }
-            }
-        }
-        scope.launch { block() }
+    private fun startCpuTurn() {
+        startClock(Side.CPU)
+        cpuJob?.cancel()
+        cpuJob = scope.launch { makeCpuMove() }
     }
 
     // ===================== MOVIMIENTO CPU =====================
@@ -282,41 +330,44 @@ class GameController(
 
         delay(120L + kotlin.random.Random.nextLong(80L))
 
-        val s    = _state.value
-        val move = getCpuMove(s.board, cpuColor)
+        val board = _state.value.board
+        val move  = getCpuMove(board, cpuColor)
 
-        // Detener timer CPU y acumular tiempo
-        val cpuElapsed = stopCpuTimer()
-        cpuAccumMs += cpuElapsed
+        // Mientras la CPU pensaba la partida pudo terminar (se le acabó
+        // el tiempo o el jugador abandonó): en ese caso su jugada ya no
+        // cuenta y no debe pisar el resultado.
+        val s = _state.value
+        if (s.result != GameResult.ONGOING) {
+            _state.value = s.copy(isThinking = false)
+            return
+        }
+
+        stopClock()
 
         if (move == null) {
             val status = MoveGenerator.getGameStatus(s.board, cpuColor)
-            val (result, reason) = resolveResult(status, forPlayer = true)
+            val (result, reason) = resolveResultForColor(status, cpuColor)
             finishGame(result, reason)
             return
         }
 
-        val captured  = s.board[move.toRow, move.toCol]
+        val captured  = DrawRules.capturedPiece(s.board, move)
         val newBoard  = s.board.applyMove(move)
         val history   = s.moveHistory + move
         val boards    = s.boardHistory + newBoard.copy()
         val capturedByCpu = if (captured != null) s.capturedByCpu + captured
                             else s.capturedByCpu
 
-        if (cpuColor == PieceColor.BLACK || playerColor == PieceColor.BLACK)
-            fullMoveNumber++
-
-        val status   = MoveGenerator.getGameStatus(newBoard, playerColor)
-        val (result, reason) = resolveResult(status, forPlayer = true)
-        val attackers = if (status == GameStatus.CHECK || status == GameStatus.CHECKMATE)
-            findCheckAttackers(newBoard, playerColor) else emptyList()
+        val status = MoveGenerator.getGameStatus(newBoard, playerColor)
+        val (result, reason) = evaluateEnd(status, playerColor, boards, history)
 
         _state.value = s.copy(
             board = newBoard, status = status, currentTurn = playerColor,
             lastMove = move, moveHistory = history, boardHistory = boards,
-            capturedByCpu = capturedByCpu, checkAttackers = attackers,
+            capturedByCpu = capturedByCpu,
+            checkAttackers = attackersFor(status, newBoard, playerColor),
             isThinking = false, result = result, endReason = reason,
-            cpuTimeMs = cpuAccumMs
+            playerTimeMs = playerAccumMs, cpuTimeMs = cpuAccumMs
         )
 
         if (result == GameResult.ONGOING) startPlayerTurn()
@@ -326,12 +377,17 @@ class GameController(
     private suspend fun getCpuMove(board: Board, cpuColor: PieceColor): Move? {
         if (stockfishReady && stockfish != null) {
             try {
-                val fen = FenConverter.toFen(board, fullMoveNumber)
-                val uci = stockfish.getBestMove(fen, difficulty.level)
+                // Se envía la partida completa (posición inicial + jugadas)
+                // para que Stockfish conozca las repeticiones y la regla de
+                // las 50 jugadas, igual que el juego.
+                val uciMoves = _state.value.moveHistory.map { UciMoves.toUci(it) }
+                val uci = stockfish.getBestMove(START_FEN, difficulty.level, uciMoves)
                 if (uci != null && uci != "(none)") {
                     val move = FenConverter.uciToMove(uci, board)
                     if (move != null) return move
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 android.util.Log.e("GameController", "Stockfish error: ${e.message}")
             }
@@ -356,49 +412,124 @@ class GameController(
 
     // ===================== TURNO DEL JUGADOR =====================
 
-    private fun startPlayerTurn() {
-        if (limitMs <= 0L) return
-        turnStartMs   = System.currentTimeMillis()
-        playerTimerJob?.cancel()
-        playerTimerJob = scope.launch {
-            while (true) {
-                delay(10)   // centésimas
-                val s = _state.value
-                if (s.pendingPromotion != null) continue
-                val elapsed = System.currentTimeMillis() - turnStartMs
-                val totalMs = playerAccumMs + elapsed
-                _state.value = _state.value.copy(playerTimeMs = totalMs)
-                if (totalMs >= limitMs) {
-                    handleTimeout(playerRanOut = true)
+    private fun startPlayerTurn() = startClock(Side.PLAYER)
+
+    // ===================== RELOJ =====================
+
+    private fun now() = System.currentTimeMillis()
+
+    private fun liveMs(side: Side): Long {
+        val base    = if (side == Side.PLAYER) playerAccumMs else cpuAccumMs
+        val running = if (activeSide == side && segmentStartMs > 0L) now() - segmentStartMs else 0L
+        return base + running
+    }
+
+    private fun publishClock() {
+        _clock.value = ClockState(liveMs(Side.PLAYER), liveMs(Side.CPU))
+    }
+
+    /** Detiene el tramo en curso y lo suma al lado que estaba jugando. */
+    private fun chargeRunningSegment() {
+        val side = activeSide
+        if (side != null && segmentStartMs > 0L) {
+            val elapsed = now() - segmentStartMs
+            if (side == Side.PLAYER) playerAccumMs += elapsed else cpuAccumMs += elapsed
+        }
+        segmentStartMs = 0L
+    }
+
+    private fun startClock(side: Side) {
+        stopClock()
+        activeSide = side
+        if (!paused) {
+            segmentStartMs = now()
+            startTicker()
+        }
+    }
+
+    private fun stopClock() {
+        tickerJob?.cancel(); tickerJob = null
+        chargeRunningSegment()
+        activeSide = null
+        publishClock()
+    }
+
+    private fun startTicker() {
+        tickerJob?.cancel()
+        if (limitMs <= 0L) return   // sin límite: el reloj visible es cosmético (GameActivity)
+        tickerJob = scope.launch {
+            while (isActive) {
+                delay(10)   // centésimas visibles en la UI
+                publishClock()
+                val side = activeSide ?: continue
+                // Elegir la coronación no hace perder por tiempo
+                if (side == Side.PLAYER && _state.value.pendingPromotion != null) continue
+                if (liveMs(side) >= limitMs) {
+                    handleTimeout(playerRanOut = side == Side.PLAYER)
                     return@launch
                 }
             }
         }
     }
 
+    /**
+     * La app pasó a segundo plano: el reloj se detiene para que una
+     * llamada o cambiar de app no haga perder por tiempo.
+     */
+    fun pause() {
+        if (paused) return
+        paused = true
+        tickerJob?.cancel(); tickerJob = null
+        chargeRunningSegment()
+        publishClock()
+    }
+
+    /** La app volvió a primer plano: el reloj sigue para quien tenía el turno. */
+    fun resume() {
+        if (!paused) return
+        paused = false
+        if (activeSide != null && _state.value.result == GameResult.ONGOING) {
+            segmentStartMs = now()
+            startTicker()
+        }
+    }
+
     // ===================== TIMEOUT =====================
 
     private fun handleTimeout(playerRanOut: Boolean) {
-        stopAllTimers()
+        stopClock()
+        cpuJob?.cancel()
         val result = if (playerRanOut) GameResult.LOSS else GameResult.WIN
         _state.value = _state.value.copy(
-            result = result, endReason = GameEndReason.TIMEOUT, isThinking = false
+            result = result, endReason = GameEndReason.TIMEOUT, isThinking = false,
+            playerTimeMs = playerAccumMs, cpuTimeMs = cpuAccumMs
         )
     }
 
     // ===================== HELPERS =====================
 
-    private fun resolveResult(status: GameStatus, forPlayer: Boolean) = when (status) {
-        GameStatus.CHECKMATE -> if (forPlayer)
-            Pair(GameResult.LOSS, GameEndReason.CHECKMATE)
-        else Pair(GameResult.WIN, GameEndReason.CHECKMATE)
-        GameStatus.STALEMATE -> Pair(GameResult.DRAW, GameEndReason.STALEMATE)
-        GameStatus.DRAW      -> Pair(GameResult.DRAW, GameEndReason.INSUFFICIENT_MATERIAL)
-        else                 -> Pair(GameResult.ONGOING, GameEndReason.ONGOING)
+    /**
+     * Resultado tras una jugada: primero mate/ahogado/material
+     * insuficiente (por la posición) y luego las tablas por triple
+     * repetición o por la regla de las 50 jugadas (por el historial).
+     * Un mate en la jugada 50 sigue siendo mate.
+     */
+    private fun evaluateEnd(
+        status: GameStatus, colorToMove: PieceColor,
+        boards: List<Board>, moves: List<Move>
+    ): Pair<GameResult, GameEndReason> {
+        val base = resolveResultForColor(status, colorToMove)
+        if (base.first != GameResult.ONGOING) return base
+        return when {
+            DrawRules.isThreefoldRepetition(boards) ->
+                Pair(GameResult.DRAW, GameEndReason.REPETITION)
+            DrawRules.isFiftyMoveDraw(boards, moves) ->
+                Pair(GameResult.DRAW, GameEndReason.FIFTY_MOVES)
+            else -> base
+        }
     }
 
     /**
-     * Versión para modo 2P y fin de turno general:
      * colorToMove = el color que debe mover ahora (quien recibió el turno).
      * Si ese color está en jaque mate, PIERDE.
      * Si está en ahogado, tablas.
@@ -415,51 +546,42 @@ class GameController(
     }
 
     private fun finishGame(result: GameResult, reason: GameEndReason) {
-        stopAllTimers()
-        _state.value = _state.value.copy(result = result, endReason = reason, isThinking = false)
+        stopClock()
+        _state.value = _state.value.copy(
+            result = result, endReason = reason, isThinking = false,
+            playerTimeMs = playerAccumMs, cpuTimeMs = cpuAccumMs
+        )
     }
+
+    private fun attackersFor(status: GameStatus, board: Board, colorInCheck: PieceColor) =
+        if (status == GameStatus.CHECK || status == GameStatus.CHECKMATE)
+            findCheckAttackers(board, colorInCheck) else emptyList()
 
     private fun findCheckAttackers(board: Board, colorInCheck: PieceColor): List<IntPair> {
         val (kingRow, kingCol) = board.kingPos(colorInCheck)
         val attackerColor      = colorInCheck.opponent()
-        return buildList {
-            for (r in 0..7) for (c in 0..7) {
-                val piece = board[r, c] ?: continue
-                if (piece.color != attackerColor) continue
-                val moves = MoveGenerator.generatePseudoLegalMoves(board, attackerColor)
-                if (moves.any { it.fromRow == r && it.fromCol == c &&
-                            it.toRow == kingRow && it.toCol == kingCol })
-                    add(Pair(r, c))
-            }
-        }
+        val moves = MoveGenerator.generatePseudoLegalMoves(board, attackerColor)
+        return moves.filter { it.toRow == kingRow && it.toCol == kingCol }
+            .map { Pair(it.fromRow, it.fromCol) }
+            .distinct()
     }
 
     fun resign() {
-        stopAllTimers()
+        stopClock()
+        cpuJob?.cancel()
         _state.value = _state.value.copy(
-            result = GameResult.RESIGN, endReason = GameEndReason.RESIGN, isThinking = false
+            result = GameResult.RESIGN, endReason = GameEndReason.RESIGN, isThinking = false,
+            playerTimeMs = playerAccumMs, cpuTimeMs = cpuAccumMs
         )
     }
 
-    // ===================== TIMERS =====================
-
-    private fun stopPlayerTimer(): Long {
-        playerTimerJob?.cancel(); playerTimerJob = null
-        return if (turnStartMs > 0L) System.currentTimeMillis() - turnStartMs else 0L
-    }
-
-    private fun stopCpuTimer(): Long {
-        cpuTimerJob?.cancel(); cpuTimerJob = null
-        return if (turnStartMs > 0L) System.currentTimeMillis() - turnStartMs else 0L
-    }
-
-    private fun stopAllTimers() {
-        playerTimerJob?.cancel(); playerTimerJob = null
-        cpuTimerJob?.cancel();    cpuTimerJob    = null
-    }
-
     fun release() {
-        stopAllTimers()
+        tickerJob?.cancel(); tickerJob = null
+        cpuJob?.cancel()
         stockfish?.quit()
+    }
+
+    companion object {
+        const val START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     }
 }

@@ -71,6 +71,14 @@ class GameRecordRepository private constructor(context: Context) {
         android.util.Log.d(TAG, "Move added: $uci (total: ${sessionMoves.size})")
     }
 
+    /** Deja solo las primeras [count] jugadas (tras un "Deshacer"). */
+    fun truncateMoves(count: Int) {
+        if (!sessionActive) return
+        synchronized(sessionMoves) {
+            while (sessionMoves.size > count.coerceAtLeast(0)) sessionMoves.removeAt(sessionMoves.size - 1)
+        }
+    }
+
     // ── Finalizar y persistir en DB ───────────────────────────────────
 
     suspend fun finishRecording(result: String) {

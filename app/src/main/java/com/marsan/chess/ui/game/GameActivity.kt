@@ -11,6 +11,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
+import androidx.activity.OnBackPressedCallback
 import androidx.lifecycle.lifecycleScope
 import com.marsan.chess.R
 import com.marsan.chess.data.model.*
@@ -59,6 +60,11 @@ class GameActivity : BaseActivity() {
 
     private var previousBoard: Board?   = null
     private var previousLastMove: Move? = null
+    // Jugadas ya procesadas (sonido, animación, grabación). Comparar el
+    // tamaño del historial distingue una jugada nueva de un "Deshacer".
+    private var previousMoveCount       = 0
+    private var previousCapturedByPlayer: List<Piece>? = null
+    private var previousCapturedByCpu:    List<Piece>? = null
 
     // Reloj cosmético (solo partidas sin límite de tiempo)
     private val clockRunnable = object : Runnable {
@@ -84,6 +90,15 @@ class GameActivity : BaseActivity() {
 
         private const val EXTRA_TWO_PLAYER   = "two_player"
         private const val EXTRA_P1_COLOR      = "p1_color"
+
+        // Estado guardado si Android recrea la pantalla
+        private const val STATE_MOVES         = "state_moves"
+        private const val STATE_PLAYER_MS     = "state_player_ms"
+        private const val STATE_CPU_MS        = "state_cpu_ms"
+        private const val STATE_PIECE_COLOR   = "state_piece_color"
+        private const val STATE_RESULT_SAVED  = "state_result_saved"
+        private const val STATE_CS_PLAYER     = "state_cs_player"
+        private const val STATE_CS_CPU        = "state_cs_cpu"
 
         fun start(
             context: Context,
@@ -128,7 +143,8 @@ class GameActivity : BaseActivity() {
         prefs            = PreferencesManager.getInstance(this)
         soundManager     = SoundManager.getInstance(this)
         recordRepo       = GameRecordRepository.getInstance(this)
-        playerName       = intent.getStringExtra(EXTRA_PLAYER_NAME) ?: prefs.playerName.ifEmpty { "Jugador" }
+        playerName       = intent.getStringExtra(EXTRA_PLAYER_NAME)
+            ?: prefs.playerName.ifEmpty { getString(R.string.default_player_name) }
         difficulty       = Difficulty.fromLevel(intent.getIntExtra(EXTRA_DIFFICULTY, 3))
         timeLimitSeconds = intent.getLongExtra(EXTRA_TIME_LIMIT_SEC, 0L)
         gameMode         = GameMode.valueOf(intent.getStringExtra(EXTRA_GAME_MODE) ?: "NORMAL")
@@ -147,6 +163,14 @@ class GameActivity : BaseActivity() {
             darkColor  = appPalette.boardDark
         )
 
+        // Partida terminada antes de que Android recreara la pantalla:
+        // no hay nada que retomar.
+        if (savedInstanceState?.getBoolean(STATE_RESULT_SAVED, false) == true) {
+            finish()
+            return
+        }
+        val savedMoves = savedInstanceState?.getStringArrayList(STATE_MOVES)
+
         playerPieceColor = if (twoPlayerMode) {
             player1Color   // en modo 2P, playerColor = color del jugador 1 (blancas van primero)
         } else when (prefs.playerPieceColor) {
@@ -154,8 +178,13 @@ class GameActivity : BaseActivity() {
             PlayerPieceColor.BLACK  -> PieceColor.BLACK
             PlayerPieceColor.RANDOM -> if (kotlin.random.Random.nextBoolean()) PieceColor.WHITE else PieceColor.BLACK
         }
+        // Al retomar, el color sorteado debe ser el mismo de antes
+        savedInstanceState?.getString(STATE_PIECE_COLOR)?.let { saved ->
+            runCatching { PieceColor.valueOf(saved) }.getOrNull()?.let { playerPieceColor = it }
+        }
 
         applyPaletteToUI()
+        applySystemBarsPadding(binding.rootLayout, appPalette.background)
         binding.boardView.palette     = boardPalette
         binding.boardView.playerColor = playerPieceColor
 
@@ -169,18 +198,20 @@ class GameActivity : BaseActivity() {
         )
 
         if (twoPlayerMode) {
+            // Sin paréntesis alrededor del if, el ")" final solo se
+            // añadía en la rama de Negras.
             val p1Label = getString(R.string.two_players_player1) + " (" +
-                if (player1Color == PieceColor.WHITE) getString(R.string.two_players_white)
-                else getString(R.string.two_players_black) + ")"
+                (if (player1Color == PieceColor.WHITE) getString(R.string.two_players_white)
+                 else getString(R.string.two_players_black)) + ")"
             val p2Color = player1Color.opponent()
             val p2Label = getString(R.string.two_players_player2) + " (" +
-                if (p2Color == PieceColor.WHITE) getString(R.string.two_players_white)
-                else getString(R.string.two_players_black) + ")"
+                (if (p2Color == PieceColor.WHITE) getString(R.string.two_players_white)
+                 else getString(R.string.two_players_black)) + ")"
             binding.tvPlayerName.text = p1Label
             binding.tvCpuName.text    = p2Label
         } else {
             binding.tvPlayerName.text = playerName
-            binding.tvCpuName.text    = "CPU"
+            binding.tvCpuName.text    = getString(R.string.game_cpu_name)
         }
         binding.boardView.onSquareTapped = { row, col -> controller.onSquareTapped(row, col) }
         binding.btnResign.setOnClickListener { confirmResign() }
@@ -212,8 +243,79 @@ class GameActivity : BaseActivity() {
             )
         }
 
-        observeState()
-        controller.startGame()
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (binding.boardView.pendingPromotion != null) return
+                if (resultSaved) goToMainMenu() else confirmResign()
+            }
+        })
+
+        if (savedMoves != null && savedInstanceState != null) {
+            // Retomar la partida: las jugadas ya hechas no deben volver a
+            // sonar, animarse ni grabarse dos veces.
+            playerCentesimals = savedInstanceState.getLong(STATE_CS_PLAYER, 0L)
+            cpuCentesimals    = savedInstanceState.getLong(STATE_CS_CPU, 0L)
+            controller.restoreGame(
+                savedMoves,
+                savedInstanceState.getLong(STATE_PLAYER_MS, 0L),
+                savedInstanceState.getLong(STATE_CPU_MS, 0L)
+            )
+            val restored = controller.state.value
+            previousMoveCount = restored.moveHistory.size
+            previousLastMove  = restored.lastMove
+            previousBoard     = restored.board.copy()
+            if (prefs.recordingEnabled) restored.moveHistory.forEach { recordRepo.addMove(it) }
+            observeState()
+        } else {
+            observeState()
+            controller.startGame()
+        }
+        observeClock()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (!::controller.isInitialized) return
+        val s = controller.state.value
+        val clock = controller.clock.value
+        outState.putStringArrayList(STATE_MOVES, ArrayList(s.moveHistory.map { UciMoves.toUci(it) }))
+        outState.putLong(STATE_PLAYER_MS, clock.playerMs)
+        outState.putLong(STATE_CPU_MS, clock.cpuMs)
+        outState.putString(STATE_PIECE_COLOR, playerPieceColor.name)
+        outState.putBoolean(STATE_RESULT_SAVED, resultSaved)
+        outState.putLong(STATE_CS_PLAYER, playerCentesimals)
+        outState.putLong(STATE_CS_CPU, cpuCentesimals)
+    }
+
+    // La app pasa a segundo plano (llamada, otra app, pantalla apagada):
+    // los relojes se detienen y siguen al volver.
+    override fun onStop() {
+        super.onStop()
+        if (!::controller.isInitialized) return
+        controller.pause()
+        clockHandler.removeCallbacks(clockRunnable)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (!::controller.isInitialized) return
+        controller.resume()
+        if (clockRunning) {
+            clockHandler.removeCallbacks(clockRunnable)
+            clockHandler.post(clockRunnable)
+        }
+    }
+
+    /** Reloj con límite: solo actualiza los dos textos, sin redibujar el tablero. */
+    private fun observeClock() {
+        if (timeLimitSeconds <= 0L) return
+        lifecycleScope.launch {
+            controller.clock.collect { clock ->
+                val limit = timeLimitSeconds * 1000L
+                binding.tvClockPlayer.text = formatMsWithCs((limit - clock.playerMs).coerceAtLeast(0))
+                binding.tvClockCpu.text    = formatMsWithCs((limit - clock.cpuMs).coerceAtLeast(0))
+            }
+        }
     }
 
     // ── PALETA ────────────────────────────────────────────────────────
@@ -250,8 +352,13 @@ class GameActivity : BaseActivity() {
         lifecycleScope.launch {
             controller.state.collectLatest { state ->
 
-                val newMove = state.lastMove
-                val isNewMove = newMove != null && newMove != previousLastMove
+                val newMove   = state.lastMove
+                val moveCount = state.moveHistory.size
+                // Jugada nueva = el historial creció. Con "Deshacer" la
+                // última jugada cambia pero el historial se achica: eso no
+                // debe sonar, animarse ni grabarse.
+                val isNewMove = newMove != null && moveCount > previousMoveCount
+                val isUndo    = moveCount < previousMoveCount
                 // Tablero ANTERIOR a la jugada: se necesita para saber si
                 // fue captura (después de mover, el destino siempre está
                 // ocupado por la pieza que llegó).
@@ -265,9 +372,13 @@ class GameActivity : BaseActivity() {
                     if (prefs.recordingEnabled) {
                         recordRepo.addMove(newMove)
                     }
-
-                    previousLastMove = newMove
-                } else { binding.boardView.animBoard = null }
+                } else {
+                    binding.boardView.animBoard = null
+                    // Las jugadas deshechas tampoco quedan en la grabación
+                    if (isUndo && prefs.recordingEnabled) recordRepo.truncateMoves(moveCount)
+                }
+                previousLastMove  = newMove
+                previousMoveCount = moveCount
                 previousBoard = state.board.copy()
 
                 // ── Sonidos ──────────────────────────────────────────
@@ -300,11 +411,21 @@ class GameActivity : BaseActivity() {
                     state.board.kingPos(state.currentTurn) else null
                 binding.boardView.pendingPromotion = state.pendingPromotion
 
-                renderCaptured(binding.layoutCapturedByCpu,    state.capturedByCpu)
-                renderCaptured(binding.layoutCapturedByPlayer, state.capturedByPlayer)
+                // Solo se reconstruyen si cambiaron (crear vistas es caro)
+                if (state.capturedByCpu != previousCapturedByCpu) {
+                    renderCaptured(binding.layoutCapturedByCpu, state.capturedByCpu)
+                    previousCapturedByCpu = state.capturedByCpu
+                }
+                if (state.capturedByPlayer != previousCapturedByPlayer) {
+                    renderCaptured(binding.layoutCapturedByPlayer, state.capturedByPlayer)
+                    previousCapturedByPlayer = state.capturedByPlayer
+                }
 
                 if (!twoPlayerMode) {
-                    binding.tvCpuName.text = if (state.usingStockfish) "CPU · SF" else "CPU"
+                    binding.tvCpuName.text = getString(
+                        if (state.usingStockfish) R.string.game_cpu_name_stockfish
+                        else R.string.game_cpu_name
+                    )
                 }
                 // En modo 2P el nombre ya está puesto en onCreate y no cambia
 
@@ -317,11 +438,7 @@ class GameActivity : BaseActivity() {
                 if (isPlayerTurnClock != playerActive) isPlayerTurnClock = playerActive
 
                 if (timeLimitSeconds > 0L) {
-                    // Con límite: tiempo RESTANTE con centésimas (mm:ss.cc)
-                    val playerRemaining = (timeLimitSeconds * 1000L - state.playerTimeMs).coerceAtLeast(0)
-                    val cpuRemaining    = (timeLimitSeconds * 1000L - state.cpuTimeMs).coerceAtLeast(0)
-                    binding.tvClockPlayer.text = formatMsWithCs(playerRemaining)
-                    binding.tvClockCpu.text    = formatMsWithCs(cpuRemaining)
+                    // Con límite: el tiempo RESTANTE lo pinta observeClock()
                 } else {
                     // Sin límite: reloj cosmético de centésimas
                     if (!clockRunning && state.result == GameResult.ONGOING) {
@@ -332,8 +449,7 @@ class GameActivity : BaseActivity() {
                 updateClockColors(playerActive)
 
                 val choosingPromotion = state.pendingPromotion != null
-                binding.btnUndo.isEnabled = state.boardHistory.size >= 3 &&
-                        state.result == GameResult.ONGOING && !state.isThinking && !choosingPromotion
+                binding.btnUndo.isEnabled = controller.canUndo(state) && !choosingPromotion
                 binding.btnResign.isEnabled = state.result == GameResult.ONGOING && !choosingPromotion
                 binding.layoutThinking.visibility =
                     if (state.isThinking) View.VISIBLE else View.GONE
@@ -472,6 +588,8 @@ class GameActivity : BaseActivity() {
             getString(R.string.end_checkmate_win) else getString(R.string.end_checkmate_loss)
         GameEndReason.STALEMATE             -> getString(R.string.end_stalemate)
         GameEndReason.INSUFFICIENT_MATERIAL -> getString(R.string.end_insufficient)
+        GameEndReason.REPETITION            -> getString(R.string.end_repetition)
+        GameEndReason.FIFTY_MOVES           -> getString(R.string.end_fifty_moves)
         GameEndReason.TIMEOUT -> if (state.result == GameResult.WIN)
             getString(R.string.end_timeout_win) else getString(R.string.end_timeout_loss)
         GameEndReason.RESIGN  -> getString(R.string.end_resign)
@@ -484,6 +602,8 @@ class GameActivity : BaseActivity() {
             GameEndReason.CHECKMATE         -> getString(R.string.end_reason_checkmate)
             GameEndReason.STALEMATE         -> getString(R.string.end_reason_stalemate)
             GameEndReason.INSUFFICIENT_MATERIAL -> getString(R.string.end_reason_insufficient)
+            GameEndReason.REPETITION        -> getString(R.string.end_reason_repetition)
+            GameEndReason.FIFTY_MOVES       -> getString(R.string.end_reason_fifty_moves)
             GameEndReason.TIMEOUT           -> getString(R.string.end_reason_timeout)
             GameEndReason.RESIGN            -> getString(R.string.end_reason_resign)
             GameEndReason.ONGOING           -> ""
@@ -520,6 +640,7 @@ class GameActivity : BaseActivity() {
                 stopClock()
                 if (!resultSaved) {
                     resultSaved = true
+                    controller.resign()   // detiene relojes y a la CPU si estaba pensando
                     lifecycleScope.launch {
                         // Grabar abandono (todos los modos)
                         if (prefs.recordingEnabled) {
@@ -530,8 +651,11 @@ class GameActivity : BaseActivity() {
                             repository.saveGameResult(GameSession(
                                 playerName = playerName, mode = gameMode, difficulty = difficulty,
                                 result = GameResult.RESIGN, endReason = GameEndReason.RESIGN,
-                                playerTimeSeconds = playerCentesimals / 100,
-                                cpuTimeSeconds    = cpuCentesimals / 100, pointsEarned = 0
+                                playerTimeSeconds = if (timeLimitSeconds > 0L)
+                                    controller.clock.value.playerMs / 1000 else playerCentesimals / 100,
+                                cpuTimeSeconds    = if (timeLimitSeconds > 0L)
+                                    controller.clock.value.cpuMs / 1000 else cpuCentesimals / 100,
+                                pointsEarned = 0, timeLimitSeconds = timeLimitSeconds
                             ))
                         }
                         goToMainMenu()
@@ -634,11 +758,9 @@ class GameActivity : BaseActivity() {
         }
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (binding.boardView.pendingPromotion != null) return
-        confirmResign()
+    override fun onDestroy() {
+        super.onDestroy()
+        stopClock()
+        if (::controller.isInitialized) controller.release()
     }
-
-    override fun onDestroy() { super.onDestroy(); stopClock(); controller.release() }
 }

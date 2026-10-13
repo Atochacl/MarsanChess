@@ -227,8 +227,10 @@ interface GameRecordDao {
         TutorialProgressEntity::class,
         GameRecordEntity::class        // ← nueva entidad
     ],
-    version = 3,                       // ← bump de versión
-    exportSchema = false
+    version = 3,
+    // El esquema se exporta a app/schemas/ (ver ksp en app/build.gradle)
+    // para poder escribir y probar migraciones. Subirlo al repo.
+    exportSchema = true
 )
 abstract class MarsanChessDatabase : RoomDatabase() {
     abstract fun playerDao(): PlayerDao
@@ -240,6 +242,20 @@ abstract class MarsanChessDatabase : RoomDatabase() {
     companion object {
         @Volatile private var INSTANCE: MarsanChessDatabase? = null
 
+        /**
+         * Migraciones a partir de la versión 3 (la primera que se
+         * publica). Ejemplo para una futura versión 4:
+         *
+         *   val MIGRATION_3_4 = object : Migration(3, 4) {
+         *       override fun migrate(db: SupportSQLiteDatabase) {
+         *           db.execSQL("ALTER TABLE game_records ADD COLUMN notes TEXT")
+         *       }
+         *   }
+         *
+         * y agregarla aquí: arrayOf(MIGRATION_3_4)
+         */
+        val MIGRATIONS: Array<androidx.room.migration.Migration> = arrayOf()
+
         fun getInstance(context: Context): MarsanChessDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(
@@ -247,7 +263,13 @@ abstract class MarsanChessDatabase : RoomDatabase() {
                     MarsanChessDatabase::class.java,
                     "marsan_chess_db"
                 )
-                .fallbackToDestructiveMigration()
+                // Desde la versión publicada en Google Play los datos de los
+                // usuarios (historial y grabaciones) NO se pueden borrar:
+                // cada cambio de esquema sube `version` y agrega su
+                // Migration a MIGRATIONS. Solo las versiones de desarrollo
+                // anteriores a la 3 se recrean desde cero.
+                .addMigrations(*MIGRATIONS)
+                .fallbackToDestructiveMigrationFrom(1, 2)
                 .build()
                 .also { INSTANCE = it }
             }

@@ -24,6 +24,7 @@ class PreferencesActivity : BaseActivity() {
 
     companion object {
         private const val EXTRA_PALETTE_IDX = "palette_idx"
+        private const val STOCKFISH_SOURCE_URL = "https://github.com/official-stockfish/Stockfish/tree/sf_16"
         fun start(context: Context, paletteIdx: Int = 0) {
             context.startActivity(Intent(context, PreferencesActivity::class.java).apply {
                 putExtra(EXTRA_PALETTE_IDX, paletteIdx)
@@ -43,6 +44,7 @@ class PreferencesActivity : BaseActivity() {
         val d          = resources.displayMetrics.density
 
         binding.rootPrefs.setBackgroundColor(palette.background)
+        applySystemBarsPadding(binding.rootPrefs, palette.background)
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = getString(R.string.prefs_title)
@@ -56,6 +58,8 @@ class PreferencesActivity : BaseActivity() {
         binding.tvNameSub.setTextColor(palette.accent)
         binding.cardLanguage.setCardBackgroundColor(palette.surface)
         binding.tvCurrentLanguage.setTextColor(palette.textPrimary)
+        binding.cardAbout.setCardBackgroundColor(palette.surface)
+        binding.tvAboutLabel.setTextColor(palette.textPrimary)
 
         setupUI()
     }
@@ -84,6 +88,7 @@ class PreferencesActivity : BaseActivity() {
                 putExtra(LanguageSelectActivity.EXTRA_FROM_PREFS, true)
             })
         }
+        binding.cardAbout.setOnClickListener { showAboutDialog() }
     }
 
     // ── NOMBRE ────────────────────────────────────────────────────────
@@ -317,6 +322,46 @@ class PreferencesActivity : BaseActivity() {
                 if (newName.isNotEmpty()) { prefs.playerName = newName; updateNameUI() }
             }
             .setNegativeButton(getString(R.string.cancel), null)
+            .show()
+    }
+
+    // ── ACERCA DE / LICENCIAS ─────────────────────────────────────────
+    // Stockfish se distribuye bajo GPLv3: la licencia exige mostrar el
+    // aviso, el texto de la licencia y dónde obtener su código fuente.
+
+    private fun showAboutDialog() {
+        val version = try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+        } catch (_: Exception) { "" }
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.about_title))
+            .setMessage(getString(R.string.about_message, version))
+            .setPositiveButton(getString(R.string.about_view_license)) { _, _ -> showLicenseDialog() }
+            .setNeutralButton(getString(R.string.about_source_code)) { _, _ ->
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(STOCKFISH_SOURCE_URL)))
+                } catch (_: Exception) { }
+            }
+            .setNegativeButton(getString(R.string.about_close), null)
+            .show()
+    }
+
+    private fun showLicenseDialog() {
+        val text = try {
+            assets.open("licenses/stockfish_gpl3.txt").bufferedReader().use { it.readText() }
+        } catch (_: Exception) { STOCKFISH_SOURCE_URL }
+        val pad = (20 * resources.displayMetrics.density).toInt()
+        val tv = TextView(this).apply {
+            this.text = text
+            textSize  = 11f
+            setTextIsSelectable(true)
+            setPadding(pad, pad / 2, pad, pad / 2)
+        }
+        val scroll = android.widget.ScrollView(this).apply { addView(tv) }
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.about_license_title))
+            .setView(scroll)
+            .setPositiveButton(getString(R.string.about_close), null)
             .show()
     }
 }

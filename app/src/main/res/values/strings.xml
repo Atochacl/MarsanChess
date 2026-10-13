@@ -206,4 +206,23 @@
     <string name="recordings_delete_selected_msg">¿Eliminar las %1$d partidas seleccionadas?</string>
     <string name="recordings_selected_count">%d partida(s) seleccionada(s)</string>
 
+    <!-- Fix59 -->
+    <string name="game_cpu_name">CPU</string>
+    <string name="game_cpu_name_stockfish">CPU - SF</string>
+    <string name="stats_points_short">%1$d pts</string>
+    <string name="end_repetition">Tablas por triple repetición</string>
+    <string name="end_fifty_moves">Tablas por la regla de las 50 jugadas</string>
+    <string name="end_reason_repetition">Tablas por triple repetición</string>
+    <string name="end_reason_fifty_moves">Tablas por la regla de las 50 jugadas</string>
+    <string name="prefs_recording_tap">Toca la tarjeta para activar o desactivar la grabación</string>
+    <string name="prefs_about_section">ACERCA DE</string>
+    <string name="prefs_about_label">Licencias y créditos</string>
+    <string name="prefs_about_tap">Versión de la app y licencia del motor Stockfish</string>
+    <string name="about_title">Marsan Chess</string>
+    <string name="about_message">Versión %1$s\n\nMarsan Chess usa el motor de ajedrez Stockfish 16 (stockfishchess.org), software libre distribuido bajo la Licencia Pública General de GNU, versión 3 (GPLv3).\n\nCon los botones de abajo puedes leer la licencia y obtener el código fuente de Stockfish.</string>
+    <string name="about_view_license">Ver licencia</string>
+    <string name="about_source_code">Código fuente</string>
+    <string name="about_close">Cerrar</string>
+    <string name="about_license_title">Licencia de Stockfish (GPLv3)</string>
+
 </resources>

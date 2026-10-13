@@ -99,7 +99,16 @@ class StockfishEngine(private val context: Context) {
 
     // ── Mejor movimiento (modo juego, con fuerza limitada) ────────────
 
-    suspend fun getBestMove(fen: String, difficultyLevel: Int): String? =
+    /**
+     * [uciMoves]: jugadas hechas desde [fen]. Con ellas Stockfish conoce
+     * el historial (repeticiones y regla de las 50 jugadas), cosa que
+     * un FEN suelto no le da.
+     */
+    suspend fun getBestMove(
+        fen: String,
+        difficultyLevel: Int,
+        uciMoves: List<String> = emptyList()
+    ): String? =
         withContext(Dispatchers.IO) {
             if (!isReady) return@withContext null
             try {
@@ -120,7 +129,8 @@ class StockfishEngine(private val context: Context) {
                 send("setoption name MultiPV value 1")
                 send("ucinewgame")
                 sync()
-                send("position fen $fen")
+                if (uciMoves.isEmpty()) send("position fen $fen")
+                else send("position fen $fen moves ${uciMoves.joinToString(" ")}")
                 send("go movetime $timeMs")
 
                 val result = waitFor("bestmove", (timeMs + 2000).toLong())
