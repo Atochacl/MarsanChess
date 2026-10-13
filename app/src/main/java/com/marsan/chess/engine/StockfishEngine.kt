@@ -117,7 +117,9 @@ class StockfishEngine(private val context: Context) {
                     send("setoption name Skill Level value 20")
                 }
 
+                send("setoption name MultiPV value 1")
                 send("ucinewgame")
+                sync()
                 send("position fen $fen")
                 send("go movetime $timeMs")
 
@@ -148,92 +150,143 @@ class StockfishEngine(private val context: Context) {
         // nivel de dificultad con el que se jugó la partida.
         send("setoption name UCI_LimitStrength value false")
         send("setoption name Skill Level value 20")
+        // UN solo hilo: con varios hilos Stockfish no es determinista y la
+        // misma jugada podía recibir notas distintas en cada análisis.
+        send("setoption name Threads value 1")
         send("ucinewgame")
         send("isready")
         waitFor("readyok", 3000)
     }
 
     /**
-     * Analiza una posición con UNA SOLA búsqueda que devuelve a la vez:
-     *   - la puntuación (normalizada a perspectiva de blancas)
-     *   - la mejor jugada
-     *   - si hay mate forzado y en cuántas jugadas
-     *
-     * Reemplaza el patrón antiguo de llamar evaluatePosition() +
-     * getBestMove() por separado, que hacía DOS búsquedas completas
-     * por posición (el doble de lento).
-     *
-     * @param depth profundidad de búsqueda. Sugerencia:
-     *   - 10 para pasada rápida de clasificación
-     *   - 14–16 para re-analizar jugadas críticas
+     * Borra la tabla hash. Antes de analizar cada jugada se llama a esto
+     * para que el resultado no dependa de qué jugadas se analizaron
+     * antes ni en qué orden.
      */
-    suspend fun analyzePosition(fen: String, depth: Int = 12): EngineAnalysis =
-        withContext(Dispatchers.IO) {
-            if (!isReady) return@withContext EngineAnalysis(0, null, null, 0)
-            try {
-                send("position fen $fen")
-                send("go depth $depth")
-
-                var lastCp    = 0
-                var lastMate: Int? = null
-                var lastDepth = 0
-                var bestMove: String? = null
-
-                // Tiempo máximo de seguridad proporcional a la profundidad
-                val deadline = System.currentTimeMillis() + 3000L + depth * 1000L
-
-                loop@ while (System.currentTimeMillis() < deadline) {
-                    if (reader?.ready() == true) {
-                        val line = reader?.readLine() ?: break@loop
-                        when {
-                            line.startsWith("info") && line.contains(" score ") -> {
-                                parseToken(line, "depth")?.let { lastDepth = it }
-                                val cp = parseToken(line, "score cp")
-                                if (cp != null) { lastCp = cp; lastMate = null }
-                                val mate = parseToken(line, "score mate")
-                                if (mate != null) { lastMate = mate }
-                            }
-                            line.startsWith("bestmove") -> {
-                                bestMove = line.trim().split(" ").getOrNull(1)
-                                    ?.takeIf { it != "(none)" }
-                                break@loop
-                            }
-                        }
-                    } else {
-                        Thread.sleep(5)
-                    }
-                }
-
-                // ── Normalización de perspectiva ─────────────────────
-                // UCI reporta la puntuación desde el punto de vista del
-                // JUGADOR QUE MUEVE. Si mueven las negras, la invertimos
-                // para que el resultado sea siempre "blancas positivo".
-                val blackToMove = fen.split(" ").getOrNull(1) == "b"
-                val normCp   = if (blackToMove) -lastCp else lastCp
-                val normMate = lastMate?.let { if (blackToMove) -it else it }
-
-                // Los mates también se reflejan en scoreCp con un valor
-                // enorme, para que las comparaciones numéricas funcionen.
-                val finalCp = when {
-                    normMate != null && normMate > 0 ->  30000 - normMate
-                    normMate != null && normMate < 0 -> -30000 - normMate
-                    else -> normCp
-                }
-
-                EngineAnalysis(finalCp, normMate, bestMove, lastDepth)
-
-            } catch (e: Exception) {
-                Log.e(TAG, "analyzePosition error: ${e.message}")
-                EngineAnalysis(0, null, null, 0)
-            }
-        }
+    suspend fun clearHash() = withContext(Dispatchers.IO) {
+        if (!isReady) return@withContext
+        send("ucinewgame")
+        sync()
+    }
 
     /**
-     * COMPATIBILIDAD: mantiene la firma antigua mientras migramos
-     * GameReplayActivity al nuevo analyzePosition(). Internamente ya
-     * usa la búsqueda unificada y la perspectiva corregida.
+     * Analiza una posición y devuelve hasta [multiPv] líneas (la 1 es la
+     * mejor), cada una con su evaluación y su variante principal (pv).
+     *
+     * Con [searchMoves] la búsqueda se limita a esas jugadas: así se
+     * evalúa la jugada que hizo el jugador desde la MISMA posición y con
+     * la MISMA profundidad que la mejor jugada, que es la única forma de
+     * comparar ambas sin ruido.
+     *
+     * Las puntuaciones salen normalizadas a perspectiva BLANCAS.
      */
-    @Deprecated("Usar analyzePosition(), que además devuelve la mejor jugada")
+    suspend fun analyzeLines(
+        fen:         String,
+        depth:       Int,
+        multiPv:     Int = 1,
+        searchMoves: List<String> = emptyList(),
+        maxTimeMs:   Long = 4000L,
+        maxNodes:    Long = 0L
+    ): List<EngineLine> = withContext(Dispatchers.IO) {
+        if (!isReady) return@withContext emptyList()
+        try {
+            // Descarta cualquier salida pendiente de una búsqueda anterior
+            // (por ejemplo un "bestmove" que llegó tarde). Sin esto, la
+            // siguiente búsqueda podía leer el resultado de la anterior.
+            if (!sync()) return@withContext emptyList()
+
+            send("setoption name MultiPV value ${multiPv.coerceIn(1, 5)}")
+            send("position fen $fen")
+            val goCmd = buildString {
+                // Con un límite de nodos (en vez de tiempo) el resultado es
+                // el mismo en cualquier teléfono y en cada repetición.
+                if (maxNodes > 0) append("go depth $depth nodes $maxNodes")
+                else append("go depth $depth movetime $maxTimeMs")
+                if (searchMoves.isNotEmpty()) append(" searchmoves ").append(searchMoves.joinToString(" "))
+            }
+            send(goCmd)
+
+            val byPv = sortedMapOf<Int, EngineLine>()
+            var gotBestMove = false
+            // Margen de seguridad por si el teléfono es muy lento
+            val deadline = System.currentTimeMillis() + maxTimeMs + 3000L +
+                (if (maxNodes > 0) 8000L else 0L)
+
+            loop@ while (System.currentTimeMillis() < deadline) {
+                if (reader?.ready() == true) {
+                    val line = reader?.readLine() ?: break@loop
+                    when {
+                        line.startsWith("info") && line.contains(" score ") && line.contains(" pv ") -> {
+                            // Los límites parciales de la ventana de búsqueda no son evaluaciones reales
+                            if (line.contains(" lowerbound") || line.contains(" upperbound")) continue@loop
+                            val idx  = parseToken(line, "multipv") ?: 1
+                            val d    = parseToken(line, "depth") ?: 0
+                            val cp   = parseToken(line, "score cp")
+                            val mate = parseToken(line, "score mate")
+                            val pv   = line.substringAfter(" pv ").trim().split(" ").filter { it.isNotBlank() }
+                            byPv[idx] = EngineLine(cp ?: 0, mate, d, pv)
+                        }
+                        line.startsWith("bestmove") -> { gotBestMove = true; break@loop }
+                    }
+                } else {
+                    Thread.sleep(5)
+                }
+            }
+            if (!gotBestMove) {
+                // El motor sigue pensando: lo detenemos y vaciamos la salida
+                send("stop")
+                waitFor("bestmove", 2000)
+            }
+            send("setoption name MultiPV value 1")
+
+            val blackToMove = fen.split(" ").getOrNull(1) == "b"
+            byPv.values.map { normalize(it, blackToMove) }
+        } catch (e: Exception) {
+            Log.e(TAG, "analyzeLines error: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * Una sola línea: evaluación + mejor jugada. Se mantiene por
+     * compatibilidad; usa la misma búsqueda que analyzeLines.
+     */
+    suspend fun analyzePosition(fen: String, depth: Int = 12): EngineAnalysis {
+        val line = analyzeLines(fen, depth, multiPv = 1).firstOrNull()
+            ?: return EngineAnalysis(0, null, null, 0)
+        return EngineAnalysis(line.scoreCp, line.mateIn, line.pv.firstOrNull(), line.depth)
+    }
+
+    /**
+     * Normalización de perspectiva: UCI reporta la puntuación desde el
+     * punto de vista del JUGADOR QUE MUEVE. Si mueven las negras se
+     * invierte, para que el resultado sea siempre "blancas positivo".
+     * Los mates también se reflejan en scoreCp con un valor enorme.
+     */
+    private fun normalize(raw: EngineLine, blackToMove: Boolean): EngineLine {
+        val cp   = if (blackToMove) -raw.scoreCp else raw.scoreCp
+        val mate = raw.mateIn?.let { if (blackToMove) -it else it }
+        val finalCp = when {
+            mate != null && mate > 0  ->  30000 - mate
+            mate != null && mate < 0  -> -30000 - mate
+            // "mate 0": el lado que mueve ya está mateado
+            mate == 0                 -> if (blackToMove) 30000 else -30000
+            else                      -> cp
+        }
+        return raw.copy(scoreCp = finalCp, mateIn = mate?.takeIf { it != 0 })
+    }
+
+    /** isready / readyok: deja el canal limpio antes de una búsqueda nueva. */
+    private fun sync(): Boolean {
+        send("isready")
+        return waitFor("readyok", 3000) != null
+    }
+
+    /**
+     * COMPATIBILIDAD: mantiene la firma antigua. Usa la búsqueda
+     * unificada y la perspectiva corregida.
+     */
+    @Deprecated("Usar analyzeLines(), que además devuelve la variante")
     suspend fun evaluatePosition(fen: String): Int = analyzePosition(fen).scoreCp
 
     // ── Cleanup ───────────────────────────────────────────────────────

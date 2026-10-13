@@ -118,11 +118,12 @@ object MoveGenerator {
             board.whiteKingsideCastle to board.whiteQueensideCastle
         else board.blackKingsideCastle to board.blackQueensideCastle
 
-        if (kingSide && board.isEmpty(r,5) && board.isEmpty(r,6) &&
+        val rook = Piece(PieceType.ROOK, color)
+        if (kingSide && board[r,7] == rook && board.isEmpty(r,5) && board.isEmpty(r,6) &&
             !isSquareAttacked(board,r,5,color) && !isSquareAttacked(board,r,6,color))
             moves += Move(r,c,r,6, isCastling=true)
 
-        if (queenSide && board.isEmpty(r,3) && board.isEmpty(r,2) && board.isEmpty(r,1) &&
+        if (queenSide && board[r,0] == rook && board.isEmpty(r,3) && board.isEmpty(r,2) && board.isEmpty(r,1) &&
             !isSquareAttacked(board,r,3,color) && !isSquareAttacked(board,r,2,color))
             moves += Move(r,c,r,2, isCastling=true)
         return moves

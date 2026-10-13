@@ -370,7 +370,7 @@ class GameRecordingsActivity : BaseActivity() {
         val count = selectedIds.size
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.recordings_delete_selected))
-            .setMessage(getString(R.string.recordings_delete_confirm))
+            .setMessage(getString(R.string.recordings_delete_selected_msg, count))
             .setPositiveButton(getString(R.string.recordings_delete_one_yes)) { _, _ ->
                 val toDelete = selectedIds.toSet()
                 lifecycleScope.launch(Dispatchers.IO) {

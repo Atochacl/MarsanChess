@@ -62,27 +62,46 @@ class GameReplayActivity : BaseActivity() {
     /** Resultado completo de análisis de una jugada, para no re-analizar al navegar. */
     private data class MoveAnalysisResult(
         val quality:     Int,
+        val label:       String,   // "Error", "Mejor jugada"...
+        val chipColor:   Int,
         val pieceType:   PieceType?,
         val pieceColor:  PieceColor,
-        val moveText:    String,   // "e3 → f4"
-        val subText:     String,   // "Blancas · Jugada 5 · Escandinava"
-        val statsText:   String,   // "Evaluación −0,5   ·   Mejor: e3→d2"
+        val moveText:    String,   // "12... Cxe5"
+        val subText:     String,   // "Negras · Jugada 12 · Captura · Jaque"
+        val statsText:   String,   // "Evaluación -0.5   ·   Mejor: Ad2"
         val explanation: String
     )
 
     /** Análisis completos por paso (índice = currentStep). */
     private val analysisCache = mutableMapOf<Int, MoveAnalysisResult>()
 
-    /**
-     * Evaluaciones de posición por índice de tablero (perspectiva blancas).
-     * Clave extra: analizar la jugada N deja guardada la evaluación de su
-     * posición final, que es la posición inicial de la jugada N+1 →
-     * analizar jugadas consecutivas cuesta UNA sola búsqueda nueva.
-     */
-    private val evalCache = mutableMapOf<Int, EngineAnalysis>()
-
     /** La sesión de análisis (ucinewgame) se inicia una sola vez por partida. */
     private var analysisSessionStarted = false
+
+    /**
+     * Apertura de la partida: la línea más larga del libro que coincide
+     * con sus primeras jugadas. Se nombra UNA sola vez, en la primera
+     * jugada analizada dentro de esa línea.
+     */
+    private var openingNameRes: Int? = null
+    private var openingPlies = 0
+    private var openingShown = false
+
+    /** Textos del análisis desde strings.xml (ES / EN según el idioma). */
+    private val analysisText = object : AnalysisText {
+        private val ids = HashMap<String, Int>()
+        private fun id(key: String, type: String): Int =
+            ids.getOrPut("$type/$key") { resources.getIdentifier(key, type, packageName) }
+        override fun s(key: String, vararg args: Any): String {
+            val res = id(key, "string")
+            if (res == 0) return key
+            return if (args.isEmpty()) getString(res) else getString(res, *args)
+        }
+        override fun pool(key: String): List<String> {
+            val res = id(key, "array")
+            return if (res == 0) emptyList() else resources.getStringArray(res).toList()
+        }
+    }
 
     private lateinit var palette: AppPalette
     private var paletteIdx = 0
@@ -116,31 +135,43 @@ class GameReplayActivity : BaseActivity() {
 
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) { loadRecord(recordId) }
-            if (result == null || result.second.isEmpty()) {
+            if (result == null || result.boards.isEmpty()) {
                 // Partida sin movimientos grabados - mostrar posición inicial
                 moves  = emptyList()
                 boards = listOf(Board().apply { setup() })
                 tvMoveLabel.text = getString(R.string.replay_no_moves)
             } else {
-                moves  = result.first
-                boards = result.second
+                moves  = result.moves
+                boards = result.boards
             }
-            boardView.playerColor = PieceColor.WHITE
+            detectGameOpening()
+            // El tablero se muestra desde el lado del jugador, como en la
+            // partida. En 2 Jugadores no hay un "jugador": blancas abajo.
+            boardView.playerColor = result?.viewColor ?: PieceColor.WHITE
             updateDisplay()
             updateButtons()
 
-            withContext(Dispatchers.IO) {
-                stockfish = StockfishEngine(this@GameReplayActivity)
-                stockfish?.init()
+            val engine = withContext(Dispatchers.IO) {
+                StockfishEngine(this@GameReplayActivity).also { it.init() }
+            }
+            if (isDestroyed || isFinishing) {
+                // La pantalla se cerró mientras arrancaba el motor
+                Thread { engine.quit() }.start()
+            } else {
+                stockfish = engine
             }
         }
     }
 
     // ── Carga en IO ───────────────────────────────────────────────────
 
-    private suspend fun loadRecord(recordId: Int): Pair<List<Move>, List<Board>>? {
+    private class LoadedGame(val moves: List<Move>, val boards: List<Board>, val viewColor: PieceColor)
+
+    private suspend fun loadRecord(recordId: Int): LoadedGame? {
         return try {
             val record = GameRecordRepository.getInstance(this).getById(recordId) ?: return null
+            val viewColor = if (record.mode != "TWO_PLAYER" && record.playerColor == PieceColor.BLACK.name)
+                PieceColor.BLACK else PieceColor.WHITE
             val uciList = movesFromJson(record.movesJson)
             android.util.Log.d("GameReplay", "UCI moves to parse: ${uciList.size} → $uciList")
 
@@ -163,7 +194,7 @@ class GameReplayActivity : BaseActivity() {
             }
 
             android.util.Log.d("GameReplay", "Parsed ${moveList.size}/${uciList.size} moves, ${boardList.size} boards")
-            Pair(moveList, boardList)
+            LoadedGame(moveList, boardList, viewColor)
         } catch (e: Exception) {
             android.util.Log.e("GameReplay", "loadRecord failed: ${e.message}", e)
             null
@@ -172,39 +203,10 @@ class GameReplayActivity : BaseActivity() {
 
     /**
      * Convierte UCI a Move sin validar contra movimientos legales.
-     * Detecta castling y en passant por contexto del tablero.
+     * Detecta enroque y al paso por contexto del tablero (ver UciMoves).
      */
-    private fun parseUciDirect(uci: String, board: Board): Move? {
-        if (uci.length < 4) return null
-        return try {
-            val fromCol = uci[0] - 'a'
-            val fromRow = 8 - (uci[1].digitToInt())
-            val toCol   = uci[2] - 'a'
-            val toRow   = 8 - (uci[3].digitToInt())
-
-            if (fromCol !in 0..7 || fromRow !in 0..7 || toCol !in 0..7 || toRow !in 0..7) return null
-
-            val promotion = if (uci.length >= 5) when (uci[4].lowercaseChar()) {
-                'q' -> PieceType.QUEEN;  'r' -> PieceType.ROOK
-                'b' -> PieceType.BISHOP; 'n' -> PieceType.KNIGHT
-                else -> null
-            } else null
-
-            val piece = board[fromRow, fromCol] ?: return null
-
-            // Detectar castling: rey mueve 2 casillas horizontalmente
-            val isCastling = piece.type == PieceType.KING && Math.abs(toCol - fromCol) == 2
-
-            // Detectar en passant: peón captura en diagonal a casilla vacía
-            val isEnPassant = piece.type == PieceType.PAWN &&
-                    fromCol != toCol && board[toRow, toCol] == null
-
-            Move(fromRow, fromCol, toRow, toCol, promotion, isEnPassant, isCastling)
-        } catch (e: Exception) {
-            android.util.Log.w("GameReplay", "parseUciDirect failed for '$uci': ${e.message}")
-            null
-        }
-    }
+    private fun parseUciDirect(uci: String, board: Board): Move? =
+        UciMoves.parseUciDirect(uci, board)
 
     // ── Layout ────────────────────────────────────────────────────────
 
@@ -524,24 +526,15 @@ class GameReplayActivity : BaseActivity() {
         "f2f4"                          to R.string.op_bird
     )
 
-    /**
-     * Detecta si la secuencia de movimientos actuales corresponde a una
-     * apertura conocida y devuelve su nombre, o null si no se reconoce.
-     */
-    private fun detectOpening(movesSoFar: List<Move>): String? {
-        if (movesSoFar.isEmpty()) return null
-        val uciSeq = movesSoFar.joinToString(" ") { moveToUci(it) }
-        // Buscar la entrada más larga que sea prefijo de la secuencia actual
-        var bestMatch: Int? = null
-        var bestLen = 0
+    /** Busca la línea de libro más larga que coincide con el inicio de la partida. */
+    private fun detectGameOpening() {
+        val seq = moves.joinToString(" ") { moveToUci(it) }
+        var bestKey = ""
         for ((key, nameRes) in OPENING_BOOK) {
-            if (uciSeq.startsWith(key) && key.length > bestLen) {
-                bestMatch = nameRes
-                bestLen   = key.length
-            }
+            val matches = seq == key || seq.startsWith("$key ")
+            if (matches && key.length > bestKey.length) { bestKey = key; openingNameRes = nameRes }
         }
-        // El nombre sale de strings.xml → se traduce solo según idioma
-        return bestMatch?.let { getString(it) }
+        openingPlies = if (bestKey.isEmpty()) 0 else bestKey.split(" ").size
     }
 
     /**
@@ -574,115 +567,66 @@ class GameReplayActivity : BaseActivity() {
             return
         }
 
+        // Un análisis por paso: si ya existe en caché, solo lo mostramos.
+        analysisCache[currentStep]?.let { showCachedAnalysis(it); return }
+
         // La jugada que se analiza es moves[currentStep-1]
         // El tablero ANTES de esa jugada es boards[currentStep-1]
         // El color que la jugó es boards[currentStep-1].currentTurn
         val boardBefore = boards.getOrNull(currentStep - 1) ?: return
-        val boardAfter  = boards.getOrNull(currentStep)     ?: return
+        val playedMove  = moves.getOrNull(currentStep - 1) ?: return
         val movedColor  = boardBefore.currentTurn   // quien ACABA DE mover
-        val playedMove  = moves.getOrNull(currentStep - 1)
+        val previous    = if (currentStep >= 2)
+            boards.getOrNull(currentStep - 2)?.let { b -> moves.getOrNull(currentStep - 2)?.let { m -> b to m } }
+        else null
 
         showPanelMessage(getString(R.string.replay_analyzing))
         btnAnalyze.isEnabled = false
 
-        // Un análisis por paso: si ya existe en caché, solo lo mostramos.
-        analysisCache[currentStep]?.let {
-            showCachedAnalysis(it); btnAnalyze.isEnabled = true; return
-        }
-
         val stepAtRequest = currentStep   // por si el usuario navega mientras analiza
+        val moveNum       = ((stepAtRequest - 1) / 2) + 1
+        val isBook        = isTheoreticalMove(stepAtRequest - 1)
 
         lifecycleScope.launch {
             try {
-                val moveNum = ((stepAtRequest - 1) / 2) + 1
-
-                val (before, after) = withContext(Dispatchers.IO) {
+                val review = withContext(Dispatchers.IO) {
                     if (!analysisSessionStarted) {
                         sf.startAnalysisSession()
                         analysisSessionStarted = true
                     }
-
-                    // ── PASADA 1 (rápida, profundidad 10) ────────────
-                    // analyzePosition devuelve puntuación + mejor jugada
-                    // en UNA búsqueda, normalizada a perspectiva blancas.
-                    // El caché evita repetir posiciones ya evaluadas.
-                    val fenBefore = FenConverter.toFen(boardBefore, moveNum)
-                    val fenAfter  = FenConverter.toFen(boardAfter,  moveNum)
-
-                    var b = evalCache[stepAtRequest - 1]
-                        ?: sf.analyzePosition(fenBefore, depth = 10)
-                            .also { evalCache[stepAtRequest - 1] = it }
-                    var a = evalCache[stepAtRequest]
-                        ?: sf.analyzePosition(fenAfter, depth = 10)
-                            .also { evalCache[stepAtRequest] = it }
-
-                    // ── PASADA 2 (profunda, solo jugadas críticas) ───
-                    // Si la jugada parece error grave o hay mate en el
-                    // horizonte, re-analizamos con profundidad 15 para
-                    // no acusar un "blunder" por ruido de baja profundidad.
-                    val moverSign  = if (movedColor == PieceColor.WHITE) 1 else -1
-                    val quickLoss  = (b.scoreCp - a.scoreCp) * moverSign
-                    val isCritical = quickLoss > 90 || b.mateIn != null || a.mateIn != null
-
-                    if (isCritical) {
-                        b = sf.analyzePosition(fenBefore, depth = 15)
-                            .also { evalCache[stepAtRequest - 1] = it }
-                        a = sf.analyzePosition(fenAfter, depth = 15)
-                            .also { evalCache[stepAtRequest] = it }
-                    }
-                    Pair(b, a)
+                    // Mejor jugada y jugada hecha, desde la MISMA posición
+                    // y a la MISMA profundidad (ver MoveReviewer.analyze)
+                    MoveReviewer.analyze(sf, boardBefore, playedMove, moveNum, isBook, previous)
+                }
+                if (isDestroyed || isFinishing) return@launch
+                if (review == null) {
+                    showPanelMessage(getString(R.string.replay_analysis_error, "Stockfish"))
+                    return@launch
                 }
 
-                // ── Pérdida en centipeones desde la perspectiva del que movió ──
-                // scoreCp viene normalizado a blancas; lo pasamos al punto
-                // de vista del jugador que hizo la jugada.
-                val moverSign    = if (movedColor == PieceColor.WHITE) 1 else -1
-                val beforeMover  = before.scoreCp * moverSign
-                val afterMover   = after.scoreCp  * moverSign
-                val cpLoss       = (beforeMover - afterMover).coerceAtLeast(0)
+                val openingName = openingNameRes
+                    ?.takeIf { !openingShown && stepAtRequest <= openingPlies }
+                    ?.let { openingShown = true; getString(it) }
 
-                val isTheoretical = isTheoreticalMove(stepAtRequest - 1)
-                val quality       = cpLossToQuality(cpLoss, moveNum, isTheoretical)
-
-                val bestMove = before.bestMove?.let { parseUciDirect(it, boardBefore) }
-                val isBestMove = bestMove != null && playedMove != null &&
-                    moveToUci(bestMove) == moveToUci(playedMove)
-
-                val openingName = detectOpening(moves.take(stepAtRequest))
-                val explanation = buildAnalysisText(
-                    quality, cpLoss, movedColor, playedMove, bestMove, isBestMove,
-                    boardBefore, before, after, openingName, isTheoretical, moveNum
-                )
+                val comment = MoveCommentBuilder(analysisText).build(review, openingName, stepAtRequest)
 
                 val colorName = getString(
                     if (movedColor == PieceColor.WHITE) R.string.color_white else R.string.color_black)
-                val moveText  = playedMove?.let {
-                    "${squareName(it.fromRow, it.fromCol)} → ${squareName(it.toRow, it.toCol)}"
-                } ?: "—"
                 val subText = buildString {
-                    append("$colorName · ${getString(R.string.an_move_n, moveNum)}")
-                    if (openingName != null && moveNum <= 10) append(" · $openingName")
-                }
-                val statsText = buildString {
-                    append(getString(R.string.an_eval_label, formatEval(after.scoreCp)))
-                    after.mateIn?.let { append(" " + getString(R.string.an_mate_in_short, Math.abs(it))) }
-                    if (isBestMove) {
-                        append("   ·   " + getString(R.string.an_optimal_check))
-                    } else if (bestMove != null) {
-                        append("   ·   " + getString(R.string.an_best_label,
-                            "${squareName(bestMove.fromRow, bestMove.fromCol)}→" +
-                            squareName(bestMove.toRow, bestMove.toCol)))
-                    }
+                    append(colorName)
+                    if (comment.kinds.isNotEmpty()) append(" · ").append(comment.kinds)
                 }
 
                 val result = MoveAnalysisResult(
-                    quality     = quality,
-                    pieceType   = playedMove?.let { boardBefore[it.fromRow, it.fromCol]?.type },
+                    quality     = review.accuracy,
+                    label       = comment.label,
+                    chipColor   = classColorFor(review),
+                    pieceType   = review.movedType,
                     pieceColor  = movedColor,
-                    moveText    = moveText,
+                    moveText    = comment.header,
                     subText     = subText,
-                    statsText   = statsText,
-                    explanation = explanation
+                    statsText   = comment.stats,
+                    explanation = comment.body
                 )
                 analysisCache[stepAtRequest] = result
 
@@ -696,162 +640,6 @@ class GameReplayActivity : BaseActivity() {
                 btnAnalyze.isEnabled = true
             }
         }
-    }
-
-    private fun buildAnalysisText(
-        quality:       Int,
-        cpLoss:        Int,
-        movedColor:    PieceColor,
-        playedMove:    Move?,
-        bestMove:      Move?,
-        isBestMove:    Boolean,
-        boardBefore:   Board,
-        before:        EngineAnalysis,
-        after:         EngineAnalysis,
-        openingName:   String?,
-        isTheoretical: Boolean,
-        moveNum:       Int
-    ): String {
-        val colorName = getString(if (movedColor == PieceColor.WHITE) R.string.color_white else R.string.color_black)
-        val rivalName = getString(if (movedColor == PieceColor.WHITE) R.string.color_black else R.string.color_white)
-        val pieceType = playedMove?.let { boardBefore[it.fromRow, it.fromCol]?.type }
-        val pieceName = getString(when (pieceType) {
-            PieceType.KING   -> R.string.piece_king
-            PieceType.QUEEN  -> R.string.piece_queen
-            PieceType.ROOK   -> R.string.piece_rook
-            PieceType.BISHOP -> R.string.piece_bishop
-            PieceType.KNIGHT -> R.string.piece_knight
-            PieceType.PAWN   -> R.string.piece_pawn
-            null             -> R.string.piece_generic
-        })
-        val isCapture    = playedMove?.let { boardBefore[it.toRow, it.toCol] } != null
-        val isPromotion  = playedMove?.promotion != null
-        val isCastling   = playedMove?.isCastling == true
-        val isOpening    = moveNum <= 10
-        val isEndgame    = boardBefore.squares.sumOf { row ->
-            row.count { it != null && it.type != PieceType.PAWN && it.type != PieceType.KING }
-        } <= 6
-
-        // ── Señales tácticas concretas (el PORQUÉ del comentario) ─────
-        val moverSign   = if (movedColor == PieceColor.WHITE) 1 else -1
-        val beforeMover = before.scoreCp * moverSign   // eval antes, ojos del que movió
-        val afterMover  = after.scoreCp  * moverSign   // eval después
-
-        // ¿Tenía mate forzado a favor y lo dejó escapar?
-        val hadMate    = before.mateIn?.let { it * moverSign > 0 } == true
-        val keptMate   = after.mateIn?.let  { it * moverSign > 0 } == true
-        val missedMate = hadMate && !keptMate
-        // ¿Su jugada le regala un mate forzado al rival?
-        val allowsMate = after.mateIn?.let { it * moverSign < 0 } == true
-        // ¿Dejó la pieza colgada? (la mejor respuesta del rival es capturar
-        // exactamente en la casilla a la que acaba de mover, y cuesta caro)
-        val destSquare = playedMove?.let { squareName(it.toRow, it.toCol) }
-        val hangsPiece = cpLoss >= 140 && playedMove != null &&
-            after.bestMove?.let { it.length >= 4 && it.substring(2, 4) == destSquare } == true
-        // ¿La ventaja cambió de manos con esta jugada?
-        val advantageFlipped = beforeMover > 100 && afterMover < -60
-        // ¿Cedió una ventaja clara sin llegar a quedar peor?
-        val advantageDrained = beforeMover > 130 && afterMover in -60..50 && !advantageFlipped
-
-        // ── Explicación: primero el PORQUÉ táctico, luego el contexto ──
-        // Las señales concretas (mate, pieza colgada, cambio de ventaja)
-        // tienen prioridad sobre los comentarios genéricos por fase.
-        val bestStr = bestMove?.let { moveToUci(it) }
-
-        val explanation = when {
-            allowsMate -> {
-                val n = after.mateIn?.let { Math.abs(it) } ?: 0
-                getString(R.string.an_allows_mate, rivalName, n)
-            }
-
-            missedMate -> {
-                val n = before.mateIn?.let { Math.abs(it) } ?: 0
-                getString(R.string.an_missed_mate, colorName, n,
-                    bestStr ?: getString(R.string.an_another_move))
-            }
-
-            hangsPiece ->
-                getString(R.string.an_hangs_piece, pieceName, destSquare ?: "", rivalName)
-
-            isBestMove && keptMate -> {
-                val n = after.mateIn?.let { Math.abs(it) } ?: 0
-                getString(R.string.an_optimal_mate, colorName, n)
-            }
-
-            isBestMove ->
-                resources.getStringArray(R.array.an_optimal_pool).random()
-                    .format(colorName)
-
-            advantageFlipped ->
-                getString(R.string.an_advantage_flipped,
-                    colorName, formatEval(beforeMover), rivalName, formatEval(afterMover)) + " " +
-                (if (isCapture) getString(R.string.an_flip_capture)
-                 else getString(R.string.an_flip_reply, after.bestMove ?: ""))
-
-            advantageDrained ->
-                getString(R.string.an_advantage_drained,
-                    colorName, formatEval(beforeMover),
-                    bestStr ?: getString(R.string.an_another_line))
-
-            isTheoretical && isOpening && openingName != null ->
-                resources.getStringArray(R.array.an_theory_pool).random()
-                    .format(openingName, colorName)
-
-            isCastling && quality >= 65 ->
-                resources.getStringArray(R.array.an_castle_pool).random()
-
-            isPromotion ->
-                if (quality >= 65) getString(R.string.an_promo_good)
-                else getString(R.string.an_promo_bad)
-
-            isCapture && quality >= 78 ->
-                resources.getStringArray(R.array.an_capture_good_pool).random()
-                    .format(pieceName, colorName)
-
-            isCapture && quality < 38 ->
-                getString(R.string.an_capture_bad,
-                    after.bestMove ?: getString(R.string.an_rival_reply), rivalName)
-
-            isOpening && quality >= 65 ->
-                resources.getStringArray(R.array.an_opening_good_pool).random()
-                    .format(pieceName, colorName)
-
-            isOpening && quality < 38 ->
-                getString(R.string.an_opening_bad, formatCpLoss(cpLoss),
-                    bestStr ?: getString(R.string.an_develop_minor))
-
-            isOpening ->
-                getString(R.string.an_opening_mid,
-                    bestStr ?: getString(R.string.an_another_piece))
-
-            isEndgame && quality >= 65 ->
-                resources.getStringArray(R.array.an_endgame_good_pool).random()
-                    .format(pieceName)
-
-            isEndgame && quality < 38 ->
-                getString(R.string.an_endgame_bad, formatCpLoss(cpLoss),
-                    bestStr ?: getString(R.string.an_activate_king))
-
-            quality >= 78 ->
-                resources.getStringArray(R.array.an_good_pool).random()
-                    .format(colorName, formatEval(afterMover), pieceName)
-
-            quality >= 52 ->
-                getString(R.string.an_acceptable,
-                    bestStr ?: getString(R.string.an_another_line), formatCpLoss(cpLoss))
-
-            quality >= 38 ->
-                getString(R.string.an_inaccuracy, pieceName, formatCpLoss(cpLoss),
-                    bestStr ?: getString(R.string.an_another_move))
-
-            quality >= 22 ->
-                getString(R.string.an_bad, colorName, formatCpLoss(cpLoss), rivalName)
-
-            else ->
-                getString(R.string.an_blunder, formatCpLoss(cpLoss))
-        }
-
-        return explanation
     }
 
     // ── Render del panel (Opción A) ──────────────────────────────────
@@ -882,11 +670,11 @@ class GameReplayActivity : BaseActivity() {
         tvMoveBig.text = r.moveText
         tvMoveSub.text = r.subText
 
-        tvQualityChip.text = "${r.quality}% ${qualityLabelFor(r.quality)}"
+        tvQualityChip.text = "${r.quality}% ${r.label}"
         tvQualityChip.background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 999f
-            setColor(qualityColorFor(r.quality))
+            setColor(r.chipColor)
         }
 
         tvStats.text    = r.statsText
@@ -932,84 +720,20 @@ class GameReplayActivity : BaseActivity() {
         }
     }
 
-    private fun qualityLabelFor(quality: Int) = getString(when {
-        quality >= 90 -> R.string.quality_excellent
-        quality >= 78 -> R.string.quality_very_good
-        quality >= 65 -> R.string.quality_good
-        quality >= 52 -> R.string.quality_acceptable
-        quality >= 38 -> R.string.quality_inaccuracy
-        quality >= 22 -> R.string.quality_bad
-        else          -> R.string.quality_blunder
-    })
-
     /**
      * Color del sello de calidad. Colores fijos semánticos (verde/azul/
      * ámbar/rojo) con texto blanco: legibles sobre cualquiera de los
      * 21 temas de la app.
      */
-    private fun qualityColorFor(quality: Int) = when {
-        quality >= 78 -> Color.parseColor("#2E7D32")   // verde
-        quality >= 52 -> Color.parseColor("#1565C0")   // azul
-        quality >= 38 -> Color.parseColor("#EF6C00")   // ámbar
-        quality >= 22 -> Color.parseColor("#C62828")   // rojo
-        else          -> Color.parseColor("#7B1414")   // rojo blunder
-    }
-
-    /** Nombre algebraico de una casilla: (fila,columna) internas → "e4". */
-    private fun squareName(row: Int, col: Int) = "${'a' + col}${8 - row}"
-
-    /**
-     * Formatea centipeones (perspectiva blancas o del jugador, según se
-     * le pase) al estilo clásico de los motores: "+1.3", "-0.4", "0.0".
-     */
-    private fun formatEval(cp: Int): String {
-        if (cp >=  25000) return getString(R.string.eval_mate_for)
-        if (cp <= -25000) return getString(R.string.eval_mate_against)
-        return String.format("%+.1f", cp / 100.0)
-    }
-
-    /** Pérdida en formato legible: "0.8 puntos de peón". */
-    private fun formatCpLoss(cpLoss: Int): String =
-        getString(R.string.an_pawn_points, cpLoss / 100.0)
-
-    /**
-     * Convierte la PÉRDIDA en centipeones (cpLoss, siempre >= 0) a una
-     * calidad 0-100, con tolerancia según la fase de la partida.
-     *
-     * Escala de referencia (estándar en análisis de ajedrez):
-     *   0-20 cp   → jugada excelente (diferencia despreciable)
-     *   20-50 cp  → buena
-     *   50-100 cp → imprecisión (medio peón)
-     *   100-300 cp→ error (un peón a una pieza menor)
-     *   300+ cp   → blunder (material grave o posición perdida)
-     *
-     * En apertura la tolerancia es algo mayor (líneas teóricas alternativas
-     * difieren en 20-40cp sin ser errores), pero NUNCA tanto como para
-     * perdonar un g4 en la jugada 1: eso pierde ~130cp y debe notarse.
-     */
-    private fun cpLossToQuality(cpLoss: Int, moveNum: Int, isTheoretical: Boolean): Int {
-        // Jugada del libro de aperturas: es teoría establecida por definición.
-        if (isTheoretical && moveNum <= 12) return 90
-
-        // Factor de tolerancia por fase: multiplica los umbrales base.
-        val tolerance = when {
-            moveNum <= 6  -> 1.5   // apertura temprana
-            moveNum <= 12 -> 1.3   // apertura
-            moveNum <= 25 -> 1.0   // medio juego
-            else          -> 0.8   // final: cada centipeón cuenta
-        }
-        val loss = cpLoss / tolerance
-
-        return when {
-            loss <= 10  -> 95
-            loss <= 25  -> 88
-            loss <= 50  -> 76
-            loss <= 80  -> 62
-            loss <= 120 -> 48
-            loss <= 200 -> 32
-            loss <= 350 -> 18
-            else        -> 6
-        }
+    private fun classColorFor(r: MoveReview) = when (r.moveClass) {
+        MoveClass.BOOK       -> Color.parseColor("#8D6E63")   // café
+        MoveClass.FORCED,
+        MoveClass.BEST,
+        MoveClass.EXCELLENT  -> Color.parseColor("#2E7D32")   // verde
+        MoveClass.GOOD       -> Color.parseColor("#1565C0")   // azul
+        MoveClass.INACCURACY -> Color.parseColor("#EF6C00")   // ámbar
+        MoveClass.MISTAKE    -> Color.parseColor("#C62828")   // rojo
+        MoveClass.BLUNDER    -> Color.parseColor("#7B1414")   // rojo oscuro
     }
 
     // ── Helpers ───────────────────────────────────────────────────────
@@ -1022,12 +746,7 @@ class GameReplayActivity : BaseActivity() {
     private fun blendColors(base: Int, tint: Int, ratio: Float): Int =
         androidx.core.graphics.ColorUtils.blendARGB(base, tint, ratio)
 
-    private fun moveToUci(move: Move): String {
-        val from  = "${'a' + move.fromCol}${8 - move.fromRow}"
-        val to    = "${'a' + move.toCol}${8 - move.toRow}"
-        val promo = move.promotion?.name?.lowercase()?.firstOrNull()?.toString() ?: ""
-        return "$from$to$promo"
-    }
+    private fun moveToUci(move: Move): String = UciMoves.toUci(move)
 
     private fun movesFromJson(json: String): List<String> {
         return try {
@@ -1039,6 +758,11 @@ class GameReplayActivity : BaseActivity() {
     override fun onDestroy() {
         super.onDestroy()
         stopAuto()
-        lifecycleScope.launch(Dispatchers.IO) { stockfish?.quit() }
+        // lifecycleScope ya está cancelado aquí: una corrutina lanzada en
+        // él podía no llegar a ejecutarse y dejar el proceso de Stockfish
+        // vivo. Se cierra en un hilo propio.
+        val sf = stockfish
+        stockfish = null
+        if (sf != null) Thread { sf.quit() }.start()
     }
 }

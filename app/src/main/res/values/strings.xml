@@ -203,6 +203,7 @@
     <string name="recordings_delete_one_yes">Sí, eliminar</string>
     <string name="recordings_select_mode_title">Seleccionar partidas</string>
     <string name="recordings_delete_selected">Eliminar seleccionadas</string>
+    <string name="recordings_delete_selected_msg">¿Eliminar las %1$d partidas seleccionadas?</string>
     <string name="recordings_selected_count">%d partida(s) seleccionada(s)</string>
 
 </resources>
