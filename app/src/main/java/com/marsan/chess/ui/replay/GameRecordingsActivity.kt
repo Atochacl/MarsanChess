@@ -62,6 +62,15 @@ class GameRecordingsActivity : BaseActivity() {
 
         buildLayout()
 
+        // Atrás: primero sale del modo selección; si no, cierra la pantalla.
+        // (onBackPressed ya no se llama con targetSdk 36.)
+        onBackPressedDispatcher.addCallback(this,
+            object : androidx.activity.OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (selectionMode) exitSelectionMode() else finish()
+                }
+            })
+
         lifecycleScope.launch {
             repo.observeAll().collectLatest { records ->
                 withContext(Dispatchers.Main) {
@@ -173,6 +182,7 @@ class GameRecordingsActivity : BaseActivity() {
         root.addView(scroll)
 
         setContentView(root)
+        applySystemBarsPadding(root, palette.background)
     }
 
     private fun makeAccentBtn(text: String, bgColor: Int, txtColor: Int, border: Int) =
@@ -393,7 +403,4 @@ class GameRecordingsActivity : BaseActivity() {
             .show()
     }
 
-    override fun onBackPressed() {
-        if (selectionMode) exitSelectionMode() else super.onBackPressed()
-    }
 }

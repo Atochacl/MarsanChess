@@ -396,7 +396,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Toca la tarjeta para activar o desactivar la grabación"
+                android:text="@string/prefs_recording_tap"
                 android:textSize="12sp"
                 android:textColor="@color/text_hint"
                 android:layout_marginTop="6dp"/>
@@ -445,6 +445,54 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/prefs_language_tap"
+                android:textSize="12sp"
+                android:textColor="@color/text_hint"
+                android:layout_marginTop="6dp"/>
+
+            <!-- ── ACERCA DE / LICENCIAS ── -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/prefs_about_section"
+                android:textSize="11sp"
+                android:textColor="@color/text_hint"
+                android:letterSpacing="0.08"
+                android:layout_marginTop="@dimen/spacing_lg"
+                android:layout_marginBottom="@dimen/spacing_sm"/>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardAbout"
+                style="@style/Widget.MarsanChess.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:foreground="?attr/selectableItemBackground">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="@dimen/card_padding">
+                    <TextView
+                        android:id="@+id/tvAboutLabel"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textSize="18sp"
+                        android:textColor="@color/text_primary"
+                        android:text="@string/prefs_about_label"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="›"
+                        android:textSize="22sp"
+                        android:textColor="@color/accent"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/prefs_about_tap"
                 android:textSize="12sp"
                 android:textColor="@color/text_hint"
                 android:layout_marginTop="6dp"/>

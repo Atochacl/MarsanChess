@@ -16,6 +16,11 @@ class SplashActivity : BaseActivity() {
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
         binding = ActivitySplashBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        // Atrás no hace nada durante el splash
+        onBackPressedDispatcher.addCallback(this,
+            object : androidx.activity.OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {}
+            })
         val prefs = PreferencesManager.getInstance(this)
         val prevIdx = prefs.activePaletteIndex
         var newIdx = (0 until AppPalettes.all.size).random()
@@ -31,6 +36,4 @@ class SplashActivity : BaseActivity() {
             finish()
         }, 2000)
     }
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {}
 }

@@ -260,6 +260,7 @@ class StatsActivity : BaseActivity() {
         scroll.addView(container)
         root.addView(scroll)
         setContentView(root)
+        applySystemBarsPadding(root, palette.background)
 
         if (playerName.isNotEmpty()) {
             lifecycleScope.launch {
@@ -270,7 +271,7 @@ class StatsActivity : BaseActivity() {
                     tvLosses.text    = player.gamesLost.toString()
                     tvDraws.text     = player.gamesDraw.toString()
                     tvAbandoned.text = player.gamesResigned.toString()
-                    tvPoints.text    = "${player.totalPoints} pts"
+                    tvPoints.text    = getString(R.string.stats_points_short, player.totalPoints)
                 }
             }
         }

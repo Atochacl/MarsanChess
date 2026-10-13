@@ -45,6 +45,8 @@ enum class GameEndReason {
     CHECKMATE,
     STALEMATE,
     INSUFFICIENT_MATERIAL,
+    REPETITION,       // triple repetición
+    FIFTY_MOVES,      // regla de las 50 jugadas
     TIMEOUT,
     RESIGN,
     ONGOING
